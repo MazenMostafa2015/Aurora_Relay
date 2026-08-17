@@ -37,7 +37,7 @@ if (-not [string]::IsNullOrWhiteSpace($env:AURORA_INTERNAL_SIGNING_CERT_SHA1) -a
 $certificatePath = Join-Path $env:RUNNER_TEMP 'aurora-relay-signing.pfx'
 try {
     [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($PfxBase64))
-    $installers = Get-ChildItem -Path $ReleaseDirectory -Filter '*.exe' -File
+    $installers = @(Get-ChildItem -Path $ReleaseDirectory -Filter '*.exe' -File)
     if ($installers.Count -eq 0) {
         throw "No Windows installer executables found in $ReleaseDirectory"
     }
