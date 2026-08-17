@@ -2,7 +2,8 @@ import os
 from pathlib import Path
 
 
-TEST_DB = Path(__file__).resolve().parents[2] / "data" / "test_api.db"
+_default_test_db = Path(__file__).resolve().parents[2] / "data" / "test_api.db"
+TEST_DB = Path(os.environ.get("AURORA_TEST_API_DB", _default_test_db)).expanduser().resolve()
 TEST_DB.parent.mkdir(parents=True, exist_ok=True)
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 os.environ["JWT_SECRET_KEY"] = "test-only-jwt-secret-not-for-production-0123456789-abcdef-0123456789"
