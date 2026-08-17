@@ -50,10 +50,12 @@ jobs:
           AURORA_DATA_DIR: ${{ runner.temp }}/aurora-relay-test-data
           AURORA_CONFIG_DIR: ${{ runner.temp }}/aurora-relay-test-config
           AURORA_LOGS_DIR: ${{ runner.temp }}/aurora-relay-test-logs
+          AURORA_TEST_DB: ${{ runner.temp }}/aurora-relay-test-databases/phase8_test.db
+          AURORA_TEST_API_DB: ${{ runner.temp }}/aurora-relay-test-databases/test_api.db
           JWT_SECRET_KEY: test-only-jwt-secret-not-for-production-0123456789-abcdef-0123456789
         run: |
           python -m compileall -q backend mcp_servers
-          mkdir -p data "$AURORA_DATA_DIR" "$AURORA_CONFIG_DIR" "$AURORA_LOGS_DIR"
+                    mkdir -p "$AURORA_DATA_DIR" "$AURORA_CONFIG_DIR" "$AURORA_LOGS_DIR" "$(dirname "$AURORA_TEST_DB")" "$(dirname "$AURORA_TEST_API_DB")"
           PYTHONPATH=backend pytest -q tests backend/tests
 
 
