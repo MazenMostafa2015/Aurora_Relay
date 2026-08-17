@@ -32,6 +32,12 @@ Create a protected GitHub environment named `release`. Require reviewer approval
 
 The PFX is reconstructed only in the ephemeral runner’s temporary directory and deleted in a `finally` block. Never commit a PFX, private key, password, token, or certificate material to the repository. Prefer a managed signing service such as Microsoft Artifact Signing when the organization has the required identity, policy, and tenant setup; in that model the signing step should exchange short-lived identity credentials rather than storing a long-lived private key in GitHub.
 
+### Internal self-signed certificate mode
+
+Aurora Relay can use a dedicated self-signed certificate only for **internal testing or controlled enterprise deployment**. The public certificate is stored at `docs/certificates/AuroraRelay-Internal-CodeSigning.cer`; the private PFX and its password remain only in protected environment secrets. Internal releases must set `AURORA_INTERNAL_SIGNING_CERT_SHA1` as a protected `release` environment variable. The signing helper verifies that each installer was signed by that expected certificate before artifacts can continue to checksums and publication.
+
+This mode does not establish public Windows trust, SmartScreen reputation, or a commercially trusted publisher identity. Recipient devices must explicitly trust the reviewed public certificate using the procedure in [`internal_codesigning.md`](internal_codesigning.md). Production public distribution requires a certificate issued by a trusted code-signing certificate authority or an organization-approved managed signing service. [6] [7]
+
 ## Windows runner prerequisites
 
 The `windows-latest` runner must provide the Windows SDK `signtool.exe`, Python 3.12, Node.js 22, pnpm 10.4.1, and the package-manager dependencies required by the repository. The workflow installs Python and Node dependencies itself. Electron Builder’s Windows NSIS target may need additional native tooling or a pinned runner image if the project later adds custom native modules.
@@ -89,3 +95,5 @@ The workflow also does not provide a production signing certificate, notarizatio
 [3]: https://learn.microsoft.com/en-us/visualstudio/deployment/creating-bootstrapper-packages?view=visualstudio "Microsoft Create bootstrapper packages"
 [4]: https://learn.microsoft.com/en-us/windows/package-manager/winget/ "Microsoft winget documentation"
 [5]: https://www.electron.build/docs/configuration "Electron Builder configuration"
+[6]: https://learn.microsoft.com/en-us/powershell/module/pki/import-certificate?view=windowsserver2025-ps "Microsoft Import-Certificate documentation"
+[7]: https://learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/design/trusted-signing "Microsoft trusted signing documentation"

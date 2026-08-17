@@ -150,10 +150,14 @@ jobs:
           WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
           WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
           WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+          AURORA_INTERNAL_SIGNING_CERT_SHA1: ${{ vars.AURORA_INTERNAL_SIGNING_CERT_SHA1 }}
           AURORA_SIGNTOOL_PATH: ${{ env.AURORA_SIGNTOOL_PATH }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_BASE64) -or [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_PASSWORD)) {
             throw 'Release environment signing secrets are not configured. Refusing to publish unsigned Windows artifacts.'
+          }
+          if ([string]::IsNullOrWhiteSpace($env:AURORA_INTERNAL_SIGNING_CERT_SHA1)) {
+            throw 'The internal signing certificate thumbprint is not configured. Refusing to publish an unverifiable internal signature.'
           }
           ./desktop/scripts/sign-windows.ps1 `
             -ReleaseDirectory desktop/release `
