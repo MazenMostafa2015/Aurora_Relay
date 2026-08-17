@@ -45,9 +45,17 @@ jobs:
           python -m pip install -r requirements.txt pytest pytest-asyncio httpx pyinstaller
 
       - name: Compile and test backend
+        env:
+          DATABASE_URL: sqlite:///${{ runner.temp }}/aurora-relay-tests.db
+          AURORA_DATA_DIR: ${{ runner.temp }}/aurora-relay-test-data
+          AURORA_CONFIG_DIR: ${{ runner.temp }}/aurora-relay-test-config
+          AURORA_LOGS_DIR: ${{ runner.temp }}/aurora-relay-test-logs
+          JWT_SECRET_KEY: test-only-jwt-secret-not-for-production-0123456789-abcdef-0123456789
         run: |
           python -m compileall -q backend mcp_servers
+          mkdir -p data "$AURORA_DATA_DIR" "$AURORA_CONFIG_DIR" "$AURORA_LOGS_DIR"
           PYTHONPATH=backend pytest -q tests backend/tests
+
 
       - name: Set up pnpm and Node.js
         uses: pnpm/action-setup@v4
