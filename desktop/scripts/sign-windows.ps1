@@ -35,8 +35,6 @@ if (-not [string]::IsNullOrWhiteSpace($env:AURORA_INTERNAL_SIGNING_CERT_SHA1) -a
 }
 
 $certificatePath = Join-Path $env:RUNNER_TEMP 'aurora-relay-signing.pfx'
-$temporaryTrustStores = @()
-$temporaryTrustEntries = @()
 try {
     [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($PfxBase64))
     $installers = @(Get-ChildItem -Path $ReleaseDirectory -Filter '*.exe' -File)
@@ -66,41 +64,28 @@ try {
             if ($actualThumbprint -ne $internalCertificateThumbprint) {
                 throw "Internal signing certificate mismatch for $($installer.Name). Expected $internalCertificateThumbprint but the signing PFX produced $actualThumbprint. Update the protected environment pin only after confirming this is the intended internal certificate."
             }
-            foreach ($storeName in @('Root', 'TrustedPublisher')) {
-                $trustStore = [System.Security.Cryptography.X509Certificates.X509Store]::new($storeName, 'CurrentUser')
-                $trustStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-                $temporaryTrustStores += $trustStore
-                $existingTrust = @($trustStore.Certificates | Where-Object {
-                    (($_.Thumbprint -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()) -eq $internalCertificateThumbprint
-                })
-                if ($existingTrust.Count -eq 0) {
-                    $trustStore.Add($signature.SignerCertificate)
-                    $temporaryTrustEntries += [pscustomobject]@{
-                        Store = $trustStore
-                        Thumbprint = $internalCertificateThumbprint
-                    }
+            if ([string]$signature.Status -notin @('Valid', 'NotTrusted', 'UnknownError')) {
+                throw "Internal signature integrity validation failed for $($installer.Name): $($signature.Status)"
+            }
+            $certificateChain = [System.Security.Cryptography.X509Certificates.X509Chain]::new()
+            try {
+                $certificateChain.ChainPolicy.TrustMode = [System.Security.Cryptography.X509Certificates.X509ChainTrustMode]::CustomRootTrust
+                $certificateChain.ChainPolicy.CustomTrustStore.Add($signature.SignerCertificate)
+                $certificateChain.ChainPolicy.RevocationMode = [System.Security.Cryptography.X509Certificates.X509RevocationMode]::NoCheck
+                $certificateChain.ChainPolicy.UrlRetrievalTimeout = [TimeSpan]::FromSeconds(2)
+                if (-not $certificateChain.Build($signature.SignerCertificate)) {
+                    $chainStatus = ($certificateChain.ChainStatus | ForEach-Object { $_.Status.ToString() }) -join ', '
+                    throw "Pinned internal signing certificate chain validation failed for $($installer.Name): $chainStatus"
                 }
             }
-            $trustedSignature = Get-AuthenticodeSignature -FilePath $installer.FullName
-            if ([string]$trustedSignature.Status -ne 'Valid') {
-                throw "Internal signature verification failed for $($installer.Name) after temporary trust: $($trustedSignature.Status)"
+            finally {
+                $certificateChain.Dispose()
             }
-            Write-Warning "Verified internal self-signed signature for $($installer.Name) against the pinned certificate. Recipient devices still require the documented Root and TrustedPublisher trust installation."
+            Write-Warning "Verified the pinned internal self-signed signing certificate for $($installer.Name) with bounded in-memory trust. Recipient devices still require the documented Root and TrustedPublisher trust installation."
         }
     }
 }
 finally {
-    foreach ($entry in $temporaryTrustEntries) {
-        $certificatesToRemove = @($entry.Store.Certificates | Where-Object {
-            (($_.Thumbprint -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()) -eq $entry.Thumbprint
-        })
-        foreach ($certificateToRemove in $certificatesToRemove) {
-            $entry.Store.Remove($certificateToRemove)
-        }
-    }
-    foreach ($trustStore in $temporaryTrustStores) {
-        $trustStore.Close()
-    }
     if (Test-Path $certificatePath) {
         Remove-Item -Force $certificatePath
     }
