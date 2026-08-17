@@ -35,6 +35,8 @@ if (-not [string]::IsNullOrWhiteSpace($env:AURORA_INTERNAL_SIGNING_CERT_SHA1) -a
 }
 
 $certificatePath = Join-Path $env:RUNNER_TEMP 'aurora-relay-signing.pfx'
+$temporaryTrustStores = @()
+$temporaryTrustEntries = @()
 try {
     [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($PfxBase64))
     $installers = @(Get-ChildItem -Path $ReleaseDirectory -Filter '*.exe' -File)
@@ -57,18 +59,48 @@ try {
         }
         else {
             $signature = Get-AuthenticodeSignature -FilePath $installer.FullName
+            if ($null -eq $signature.SignerCertificate) {
+                throw "Internal signature verification did not return a signer certificate for $($installer.Name)"
+            }
             $actualThumbprint = ($signature.SignerCertificate.Thumbprint -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
             if ($actualThumbprint -ne $internalCertificateThumbprint) {
                 throw "Internal signing certificate mismatch for $($installer.Name). Expected $internalCertificateThumbprint but the signing PFX produced $actualThumbprint. Update the protected environment pin only after confirming this is the intended internal certificate."
             }
-            if ([string]$signature.Status -notin @('Valid', 'NotTrusted')) {
-                throw "Internal signature verification failed for $($installer.Name): $($signature.Status)"
+            foreach ($storeName in @('Root', 'TrustedPublisher')) {
+                $trustStore = [System.Security.Cryptography.X509Certificates.X509Store]::new($storeName, 'CurrentUser')
+                $trustStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+                $temporaryTrustStores += $trustStore
+                $existingTrust = @($trustStore.Certificates | Where-Object {
+                    (($_.Thumbprint -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()) -eq $internalCertificateThumbprint
+                })
+                if ($existingTrust.Count -eq 0) {
+                    $trustStore.Add($signature.SignerCertificate)
+                    $temporaryTrustEntries += [pscustomobject]@{
+                        Store = $trustStore
+                        Thumbprint = $internalCertificateThumbprint
+                    }
+                }
             }
-            Write-Warning "Verified internal self-signed signature for $($installer.Name). TrustedPublisher and Root installation is required on recipient devices."
+            $trustedSignature = Get-AuthenticodeSignature -FilePath $installer.FullName
+            if ([string]$trustedSignature.Status -ne 'Valid') {
+                throw "Internal signature verification failed for $($installer.Name) after temporary trust: $($trustedSignature.Status)"
+            }
+            Write-Warning "Verified internal self-signed signature for $($installer.Name) against the pinned certificate. Recipient devices still require the documented Root and TrustedPublisher trust installation."
         }
     }
 }
 finally {
+    foreach ($entry in $temporaryTrustEntries) {
+        $certificatesToRemove = @($entry.Store.Certificates | Where-Object {
+            (($_.Thumbprint -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()) -eq $entry.Thumbprint
+        })
+        foreach ($certificateToRemove in $certificatesToRemove) {
+            $entry.Store.Remove($certificateToRemove)
+        }
+    }
+    foreach ($trustStore in $temporaryTrustStores) {
+        $trustStore.Close()
+    }
     if (Test-Path $certificatePath) {
         Remove-Item -Force $certificatePath
     }
