@@ -57,8 +57,6 @@ jobs:
           python -m compileall -q backend mcp_servers
           mkdir -p "$AURORA_DATA_DIR" "$AURORA_CONFIG_DIR" "$AURORA_LOGS_DIR" "$(dirname "$AURORA_TEST_DB")" "$(dirname "$AURORA_TEST_API_DB")"
           PYTHONPATH=backend pytest -q tests backend/tests
-
-
       - name: Set up pnpm and Node.js
         uses: pnpm/action-setup@v4
         with:
@@ -124,12 +122,35 @@ jobs:
         run: |
           bash desktop/scripts/build-all.sh win
 
+      - name: Provision Windows SDK signing tools
+        shell: pwsh
+        run: |
+          $sdkRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+          $signtool = if (Test-Path $sdkRoot) {
+            Get-ChildItem -Path $sdkRoot -Filter signtool.exe -Recurse -ErrorAction SilentlyContinue |
+              Where-Object { $_.Directory.Name -eq 'x64' } |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1
+          }
+          if ($null -eq $signtool) {
+            choco install windows-sdk-10.0 --yes --no-progress --limit-output
+            $signtool = Get-ChildItem -Path $sdkRoot -Filter signtool.exe -Recurse -ErrorAction SilentlyContinue |
+              Where-Object { $_.Directory.Name -eq 'x64' } |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1
+          }
+          if ($null -eq $signtool) {
+            throw 'signtool.exe was not available after Windows SDK provisioning.'
+          }
+          "AURORA_SIGNTOOL_PATH=$($signtool.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Sign Windows artifacts
         shell: pwsh
         env:
           WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
           WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
           WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+          AURORA_SIGNTOOL_PATH: ${{ env.AURORA_SIGNTOOL_PATH }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_BASE64) -or [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_PASSWORD)) {
             throw 'Release environment signing secrets are not configured. Refusing to publish unsigned Windows artifacts.'

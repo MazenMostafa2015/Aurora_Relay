@@ -17,8 +17,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$signtool = Get-Command signtool.exe -ErrorAction SilentlyContinue
-if ($null -eq $signtool) {
+$signtoolPath = if (-not [string]::IsNullOrWhiteSpace($env:AURORA_SIGNTOOL_PATH) -and (Test-Path $env:AURORA_SIGNTOOL_PATH -PathType Leaf)) {
+    (Get-Item $env:AURORA_SIGNTOOL_PATH).FullName
+}
+else {
+    (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
+}
+if ([string]::IsNullOrWhiteSpace($signtoolPath)) {
     throw 'signtool.exe was not found. Use a Windows runner with the Windows SDK installed.'
 }
 if ([string]::IsNullOrWhiteSpace($TimestampUrl)) {
@@ -35,12 +40,12 @@ try {
 
     foreach ($installer in $installers) {
         Write-Host "Signing $($installer.Name)"
-        & $signtool.Source sign /fd SHA256 /f $certificatePath /p $PfxPassword /tr $TimestampUrl /td SHA256 $installer.FullName
+        & $signtoolPath sign /fd SHA256 /f $certificatePath /p $PfxPassword /tr $TimestampUrl /td SHA256 $installer.FullName
         if ($LASTEXITCODE -ne 0) {
             throw "signtool failed for $($installer.Name) with exit code $LASTEXITCODE"
         }
 
-        & $signtool.Source verify /pa /all $installer.FullName
+        & $signtoolPath verify /pa /all $installer.FullName
         if ($LASTEXITCODE -ne 0) {
             throw "Signature verification failed for $($installer.Name)"
         }
