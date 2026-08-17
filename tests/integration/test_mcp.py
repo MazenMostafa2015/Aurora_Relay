@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from mcp_servers.common.server_discovery import ServerDiscovery
 
 
 def test_configured_mcp_servers_are_discoverable():
-    config_path = "/home/ubuntu/projects/mcp-aplication-36e0710f/mcp_servers/config.json"
+    config_path = Path(__file__).resolve().parents[2] / "mcp_servers" / "config.json"
     discovery = ServerDiscovery(config_path)
     servers = discovery.discover()
     names = {server.name for server in servers}
