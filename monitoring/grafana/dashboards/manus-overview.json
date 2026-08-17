@@ -1,0 +1,13 @@
+{
+  "title": "Manus AI Overview",
+  "uid": "manus-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "HTTP requests / second", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "targets": [{"expr": "rate(manus_http_requests_total[5m])", "legendFormat": "{{method}} {{path}} {{status}}"}]},
+    {"id": 2, "type": "timeseries", "title": "Request duration", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "targets": [{"expr": "rate(manus_http_request_seconds_total[5m])", "legendFormat": "{{method}} {{path}}"}]},
+    {"id": 3, "type": "stat", "title": "Tasks accepted", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 8}, "targets": [{"expr": "manus_tasks_created_total"}]},
+    {"id": 4, "type": "stat", "title": "5xx request errors", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 8}, "targets": [{"expr": "sum(manus_http_requests_total{status=~\"5..\"})"}]}
+  ]
+}

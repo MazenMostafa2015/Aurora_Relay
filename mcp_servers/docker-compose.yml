@@ -1,0 +1,26 @@
+services:
+  filesystem:
+    image: python:3.11-slim
+    working_dir: /app
+    command: sh -c "pip install -q -r requirements.txt && python -m mcp_servers.filesystem.server"
+    environment:
+      WORKSPACE_DIR: /workspace
+      MCP_LOG_PATH: /logs/filesystem.log
+    volumes:
+      - ..:/app
+      - ../workspace:/workspace
+      - ../logs:/logs
+
+  browser:
+    image: mcr.microsoft.com/playwright/python:v1.45.0-jammy
+    working_dir: /app
+    command: sh -c "pip install -q -r requirements.txt && python -m mcp_servers.browser.server"
+    environment:
+      PLAYWRIGHT_BROWSER: chromium
+      PLAYWRIGHT_HEADLESS: "true"
+      MCP_LOG_PATH: /logs/browser.log
+      MCP_ARTIFACT_DIR: /artifacts
+    volumes:
+      - ..:/app
+      - ../logs:/logs
+      - ../artifacts:/artifacts

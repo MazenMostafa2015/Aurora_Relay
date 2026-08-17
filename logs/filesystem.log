@@ -1,0 +1,5 @@
+2026-08-14 18:50:26,786 INFO mcp_servers {"duration_ms": 0.33, "event": "tool_call", "success": true, "tool": "write_file"}
+2026-08-14 18:50:48,758 INFO mcp_servers {"duration_ms": 0.33, "event": "tool_call", "success": true, "tool": "write_file"}
+2026-08-14 18:51:24,875 INFO mcp_servers {"duration_ms": 0.33, "event": "tool_call", "success": true, "tool": "write_file"}
+2026-08-14 18:52:10,415 INFO mcp_servers {"duration_ms": 0.33, "event": "tool_call", "success": true, "tool": "write_file"}
+2026-08-14 19:02:02,272 INFO mcp_servers {"duration_ms": 0.38, "event": "tool_call", "success": true, "tool": "write_file"}

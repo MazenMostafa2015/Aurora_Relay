@@ -1,0 +1,79 @@
+2026-08-14 18:49:05,097 ERROR mcp_servers Unexpected tool failure: search_web
+Traceback (most recent call last):
+  File "/home/ubuntu/projects/mcp-aplication-36e0710f/mcp_servers/common/error_handler.py", line 60, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/projects/mcp-aplication-36e0710f/mcp_servers/browser/server.py", line 75, in search_web
+    page = await _get_page()
+           ^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/projects/mcp-aplication-36e0710f/mcp_servers/browser/server.py", line 42, in _get_page
+    _browser = await launcher.launch(headless=os.getenv("PLAYWRIGHT_HEADLESS", "true").lower() != "false")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/playwright/async_api/_generated.py", line 16731, in launch
+    await self._impl_obj.launch(
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_browser_type.py", line 97, in launch
+    await self._channel.send(
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_connection.py", line 76, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_connection.py", line 632, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.Error: BrowserType.launch: Executable doesn't exist at /home/ubuntu/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+2026-08-14 18:50:26,661 ERROR mcp_servers Unexpected tool failure: search_web
+Traceback (most recent call last):
+  File "/home/ubuntu/projects/mcp-aplication-36e0710f/mcp_servers/common/error_handler.py", line 60, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/projects/mcp-aplication-36e0710f/mcp_servers/browser/server.py", line 77, in search_web
+    results = await page.locator("a").evaluate_all("""(links) => links.map(a => ({title: (a.innerText || '').trim(), url: a.href})).filter(x => x.title && /^https?:/.test(x.url)).slice(0, arguments[0])""", num_results)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/playwright/async_api/_generated.py", line 18148, in evaluate_all
+    await self._impl_obj.evaluate_all(
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_locator.py", line 202, in evaluate_all
+    return await self._frame.eval_on_selector_all(self._selector, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_frame.py", line 488, in eval_on_selector_all
+    await self._channel.send(
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_connection.py", line 76, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_connection.py", line 632, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.Error: Locator.evaluate_all: ReferenceError: arguments is not defined
+    at eval (eval at evaluate (:311:30), <anonymous>:1:135)
+    at UtilityScript.evaluate (<anonymous>:318:18)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+2026-08-14 18:50:48,752 INFO mcp_servers {"duration_ms": 7449.09, "event": "tool_call", "success": true, "tool": "search_web"}
+2026-08-14 18:51:24,869 INFO mcp_servers {"duration_ms": 9189.59, "event": "tool_call", "success": true, "tool": "search_web"}
+2026-08-14 18:52:10,297 ERROR mcp_servers Unexpected tool failure: search_web
+Traceback (most recent call last):
+  File "/home/ubuntu/projects/mcp-aplication-36e0710f/mcp_servers/common/error_handler.py", line 60, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/projects/mcp-aplication-36e0710f/mcp_servers/browser/server.py", line 76, in search_web
+    await page.goto(f"https://www.bing.com/search?q={quote(query)}", wait_until="domcontentloaded", timeout=30_000)
+  File "/usr/local/lib/python3.12/dist-packages/playwright/async_api/_generated.py", line 9869, in goto
+    await self._impl_obj.goto(
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_page.py", line 560, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_frame.py", line 156, in goto
+    await self._channel.send(
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_connection.py", line 76, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/playwright/_impl/_connection.py", line 632, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TimeoutError: Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://www.bing.com/search?q=latest%20AI%20advancements%20news", waiting until "domcontentloaded"
+
+2026-08-14 19:02:02,266 INFO mcp_servers {"duration_ms": 8332.46, "event": "tool_call", "success": true, "tool": "search_web"}

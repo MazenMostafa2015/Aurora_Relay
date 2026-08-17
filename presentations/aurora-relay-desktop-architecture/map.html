@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where the strategy lives</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+.slide-container{width:1280px;min-height:720px;background:#0b1013;color:#e7eeed;font-family:Inter,Arial,sans-serif;position:relative}
+.inner{padding-top:56px;margin-left:74px;margin-right:74px}
+.eyebrow{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.18em}.rule{display:inline-block;width:55px;height:1px;background:#53d8d1;margin-right:14px;vertical-align:middle}
+h1{margin:25px 0 8px;font:800 50px/.98 Georgia,serif;letter-spacing:-.05em;color:#f3f6f5}h1 em{font-style:normal;color:#53d8d1}
+.sub{margin:0;color:#829494;font-size:15px;line-height:1.4;max-width:680px}
+.atlas{margin-top:24px;display:grid;grid-template-columns:1fr 1fr;column-gap:54px;position:relative}
+.atlas:before{content:"";position:absolute;left:0;right:0;top:28px;height:1px;background:#365255}
+.group-title{color:#f2b84b;font:11px ui-monospace,monospace;letter-spacing:.12em;margin-bottom:16px}
+.item{min-height:48px;border-top:1px solid #26383b;padding-top:8px;margin-bottom:3px;display:grid;grid-template-columns:34px 1fr;column-gap:10px}
+.item:last-child{border-bottom:1px solid #26383b;padding-bottom:8px}
+.marker{color:#53d8d1;font:12px ui-monospace,monospace}.path{color:#e7eeed;font:13px ui-monospace,monospace;line-height:1.25}.desc{display:block;color:#829494;font:11px/1.35 Inter,Arial,sans-serif;margin-top:4px}
+.footer{position:absolute;left:74px;right:74px;bottom:34px;border-top:1px solid #365255;padding-top:12px;display:grid;grid-template-columns:220px 1fr 240px;column-gap:28px;align-items:start}.footer strong{color:#f2b84b;font:12px ui-monospace,monospace;letter-spacing:.1em}.footer p{margin:0;color:#a9b9b8;font-size:13px;line-height:1.4}.footer aside{color:#829494;font:11px/1.45 ui-monospace,monospace;text-align:right}.footer aside b{display:block;color:#e7eeed;font:13px Inter,Arial,sans-serif;margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="inner">
+    <div class="eyebrow"><span class="rule"></span>10 / REPOSITORY MAP</div>
+    <h1>Where the strategy <em>lives.</em></h1>
+    <p class="sub">The source archive keeps runtime lifecycle, security boundaries, packaging, and end-user guidance close enough to evolve together.</p>
+    <div class="atlas">
+      <div>
+        <div class="group-title">RUNTIME &amp; CONTROL PLANE</div>
+        <div class="item"><div class="marker">01</div><div class="path">desktop/electron/main.js<span class="desc">Electron lifecycle, backend spawn, tray, and shutdown.</span></div></div>
+        <div class="item"><div class="marker">02</div><div class="path">desktop/electron/setup-wizard.js<span class="desc">First-run probes, progress states, retry, and safe completion.</span></div></div>
+        <div class="item"><div class="marker">03</div><div class="path">desktop/electron/preload.js<span class="desc">Minimal renderer-to-main IPC boundary.</span></div></div>
+        <div class="item"><div class="marker">04</div><div class="path">backend/run.py<span class="desc">Packaged FastAPI entrypoint, local paths, and loopback binding.</span></div></div>
+        <div class="item"><div class="marker">05</div><div class="path">backend/app/core/sandbox<span class="desc">Fail-closed execution policy and workspace isolation.</span></div></div>
+      </div>
+      <div>
+        <div class="group-title">BUILD &amp; OPERATIONS</div>
+        <div class="item"><div class="marker">06</div><div class="path">desktop/pyinstaller/backend.spec<span class="desc">Freezes the backend and MCP runtime into aurora-backend.</span></div></div>
+        <div class="item"><div class="marker">07</div><div class="path">desktop/electron/package.json<span class="desc">Electron Builder targets, resources, and installer metadata.</span></div></div>
+        <div class="item"><div class="marker">08</div><div class="path">desktop/scripts/build-all.sh<span class="desc">Frontend → PyInstaller → Electron Builder → checksums.</span></div></div>
+        <div class="item"><div class="marker">09</div><div class="path">docs/runtime_installation.md<span class="desc">Ollama and Docker installation, privacy, and recovery guidance.</span></div></div>
+        <div class="item"><div class="marker">10</div><div class="path">docs/native_installers.md<span class="desc">Platform builds, signing, notarization, and clean-machine gates.</span></div></div>
+      </div>
+    </div>
+    <div class="footer"><strong>COMPOSED RELEASE</strong><p>Build metadata turns the same implementation into a Windows NSIS installer, macOS DMG, or Linux AppImage/Debian package without changing the runtime security contract.</p><aside><b>Source stays portable.</b>Trust is added by native CI, signing, and validation.</aside></div>
+  </div>
+</div>
+</body>
+</html>

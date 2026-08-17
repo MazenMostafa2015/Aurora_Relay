@@ -1,0 +1,26 @@
+{
+  "sandbox": {
+    "image": "python:3.11-slim",
+    "node_image": "node:20-slim",
+    "timeout_seconds": 30,
+    "max_timeout_seconds": 120,
+    "memory_limit": "512m",
+    "cpu_limit": 1.0,
+    "pids_limit": 128,
+    "disk_limit": "100m",
+    "output_limit_bytes": 1000000,
+    "read_only_rootfs": true,
+    "drop_capabilities": ["ALL"],
+    "add_capabilities": [],
+    "no_new_privileges": true,
+    "network_access": "none",
+    "network_mode": "none",
+    "enabled_languages": ["python", "javascript", "shell"],
+    "workspace_root": "workspace"
+  },
+  "mcp_server": {
+    "name": "Code-Executor-Server",
+    "command": "python3 -m app.core.mcp_servers.code_executor.server",
+    "allowed_tools": ["sandbox_capabilities", "execute_python", "execute_javascript", "execute_shell", "execute_with_data", "create_file_in_sandbox"]
+  }
+}

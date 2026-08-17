@@ -1,0 +1,12 @@
+{
+  "setupComplete": false,
+  "useLocalModel": true,
+  "enableCloudProviders": false,
+  "startOnLogin": true,
+  "sendAnonymousDiagnostics": false,
+  "sandbox": {
+    "network": false,
+    "allowHostExecution": false,
+    "requireDocker": true
+  }
+}

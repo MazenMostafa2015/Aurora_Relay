@@ -1,0 +1,12 @@
+{
+  "agent": {
+    "max_steps": 20,
+    "max_parallel_steps": 4,
+    "default_step_retries": 3,
+    "approval_timeout_seconds": 3600,
+    "event_history_limit": 1000,
+    "task_storage_dir": "data/tasks",
+    "persist_after_each_step": true,
+    "enable_memory_consolidation": true
+  }
+}

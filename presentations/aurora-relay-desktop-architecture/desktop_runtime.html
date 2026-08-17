@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Electron is the local control plane</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+.slide-container{width:1280px;min-height:720px;background:#0b1013;color:#e7eeed;padding:56px 74px 12px;font-family:Inter,Arial,sans-serif;position:relative}
+.eyebrow{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.18em}
+.rule{display:inline-block;width:55px;height:1px;background:#53d8d1;margin-right:14px;vertical-align:middle}
+h1{margin:26px 0 8px;font:800 48px/.98 Georgia,serif;letter-spacing:-.045em;color:#f3f6f5}h1 em{color:#53d8d1;font-style:normal}
+.sub{color:#829494;font-size:15px;line-height:1.4;max-width:720px}
+.sequence{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:28px;border-top:1px solid #365255;border-bottom:1px solid #365255}
+.step{min-height:110px;padding:16px 12px 10px 0;border-right:1px solid #26383b;position:relative}.step:not(:first-child){padding-left:14px}.step:last-child{border-right:0}
+.num{color:#f2b84b;font:12px ui-monospace,monospace}.step h2{font-size:16px;line-height:1.1;margin:13px 0 8px;color:#e7eeed}.step p{font-size:12px;line-height:1.35;color:#829494;margin:0;max-width:150px}.arrow{position:absolute;right:12px;top:60px;color:#53d8d1;font-size:17px}
+.boundary{margin-top:18px;border-top:1px solid #365255;display:grid;grid-template-columns:1fr 1fr 1fr}
+.zone{min-height:120px;padding:14px 20px 10px 0;border-right:1px solid #26383b}.zone:not(:first-child){padding-left:20px}.zone:last-child{border-right:0}.zone h3{margin:0 0 10px;font-size:16px;color:#e7eeed}.zone p{margin:0;color:#a9b9b8;font-size:13px;line-height:1.45}.zone strong{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.1em;display:block;margin-bottom:9px}
+.note{position:absolute;right:74px;top:66px;width:235px;color:#829494;font:11px/1.45 ui-monospace,monospace;text-align:right}.note strong{display:block;color:#f2b84b;font:14px Inter,Arial,sans-serif;margin-bottom:5px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="eyebrow"><span class="rule"></span>03 / DESKTOP RUNTIME</div>
+  <h1>Electron is the<br><em>local control plane.</em></h1>
+  <p class="sub">The shell owns process lifecycle, window isolation, first-run setup, tray behavior, and the boundary to the embedded FastAPI service.</p>
+  <div class="note"><strong>ONE PROCESS OWNER</strong>Electron starts the backend, waits for health, loads the UI, and stops the backend during exit.</div>
+  <div class="sequence">
+    <div class="step"><div class="num">01</div><h2>Choose port</h2><p>Reserve a random loopback port.</p><div class="arrow">→</div></div>
+    <div class="step"><div class="num">02</div><h2>Spawn backend</h2><p>Start packaged FastAPI locally.</p><div class="arrow">→</div></div>
+    <div class="step"><div class="num">03</div><h2>Wait for health</h2><p>Require a successful /health response.</p><div class="arrow">→</div></div>
+    <div class="step"><div class="num">04</div><h2>Load workspace</h2><p>Serve the bundled React interface.</p><div class="arrow">→</div></div>
+    <div class="step"><div class="num">05</div><h2>Open the tray</h2><p>Keep the local service lifecycle visible.</p></div>
+  </div>
+  <div class="boundary">
+    <div class="zone"><strong>RENDERER</strong><h3>Least privilege by default</h3><p><b>nodeIntegration: false</b><br>Context isolation and Chromium sandbox enabled.</p></div>
+    <div class="zone"><strong>PRELOAD</strong><h3>Explicit IPC only</h3><p>Small bridge for status, quit, tray, setup, and validated external links.</p></div>
+    <div class="zone"><strong>BACKEND</strong><h3>Loopback, per-user state</h3><p>Binds to <b>127.0.0.1</b>; SQLite, config, and logs live in the platform user directory.</p></div>
+  </div>
+</div>
+</body>
+</html>

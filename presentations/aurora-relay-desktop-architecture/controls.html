@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trust is a lifecycle, not a launch feature</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+.slide-container{width:1280px;min-height:720px;background:#0b1013;color:#e7eeed;padding:56px 74px 18px;font-family:Inter,Arial,sans-serif;position:relative;display:grid;grid-template-columns:1fr 520px;gap:24px}
+.eyebrow{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.18em}
+.rule{display:inline-block;width:56px;height:1px;background:#53d8d1;margin-right:14px;vertical-align:middle}
+h1{max-width:510px;margin:26px 0 14px;font:800 51px/.96 Georgia,serif;letter-spacing:-.05em;color:#f3f6f5}h1 em{font-style:normal;color:#53d8d1}
+.lede{max-width:430px;margin:0 0 12px;color:#a9b9b8;font-size:16px;line-height:1.45;font-weight:300}
+.tag{color:#f2b84b;font:11px ui-monospace,monospace;letter-spacing:.12em;justify-self:end}
+.current{width:100%;border-top:1px solid #53d8d1;padding-top:12px}
+.section-title{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}.section-title strong{color:#53d8d1;font:12px ui-monospace,monospace;letter-spacing:.12em}.section-title span{color:#53686a;font:10px ui-monospace,monospace}
+.control{display:grid;grid-template-columns:32px 185px 1fr;min-height:46px;border-bottom:1px solid #26383b;align-items:center}
+.control:first-of-type{border-top:1px solid #26383b}.control .mark{color:#53d8d1;font:15px ui-monospace,monospace}.control h2{margin:0;font-size:14px;font-weight:600;color:#e7eeed}.control p{margin:0;color:#829494;font:11px/1.35 ui-monospace,monospace}
+.quote{color:#53686a;font:11px/1.5 ui-monospace,monospace;border-top:1px solid #365255;padding-top:10px;margin-top:8px}
+.quote b{color:#e7eeed;font:13px Inter,Arial,sans-serif;display:block;margin-bottom:4px}
+.gates{border-top:2px solid #f2b84b;padding-top:14px;margin-top:12px}
+.gates-title{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}.gates-title strong{color:#f2b84b;font:12px ui-monospace,monospace;letter-spacing:.12em}.gates-title span{color:#829494;font:11px ui-monospace,monospace}
+.gate-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.gate{min-height:64px;border-bottom:1px solid #26383b;padding-bottom:6px}
+.gate .num{color:#f2b84b;font:12px ui-monospace,monospace}.gate h3{margin:6px 0 4px;color:#e7eeed;font-size:14px;line-height:1.15}.gate p{margin:0;color:#829494;font-size:11px;line-height:1.35}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div style="grid-column:1/2">
+    <div class="eyebrow"><span class="rule"></span>08 / OPERATING CONTROLS</div>
+    <h1>Trust is a lifecycle,<br>not a <em>launch feature.</em></h1>
+    <p class="lede">The foundation already makes boundaries visible. The release path turns those boundaries into repeatable, signed, and testable operations.</p>
+    <div class="quote"><b>THE RELEASE QUESTION</b>Can a clean machine reproduce the same capability state, with the same evidence, under failure?</div>
+    <div class="gates">
+      <div class="gates-title"><strong>NEXT RELEASE GATES</strong><span>FROM FOUNDATION TO OPERABLE PRODUCT</span></div>
+      <div class="gate-grid">
+        <div class="gate"><div class="num">01</div><h3>Native CI builds</h3><p>Windows, macOS, and Linux runners.</p></div>
+        <div class="gate"><div class="num">02</div><h3>Runtime preflight</h3><p>Model downloads and Docker image checks.</p></div>
+        <div class="gate"><div class="num">03</div><h3>Signed updates</h3><p>Feed provenance, rollback, and promotion.</p></div>
+        <div class="gate"><div class="num">04</div><h3>Enterprise playbook</h3><p>Deployment, privacy, and upgrade policy.</p></div>
+        <div class="gate"><div class="num">05</div><h3>Clean-machine proof</h3><p>Missing, stopped, and restricted runtimes.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="grid-column:2/3">
+    <div class="tag">CURRENT STATE / NEXT RELEASE</div>
+    <div class="current">
+      <div class="section-title"><strong>IMPLEMENTED CONTROLS</strong><span>BASELINE</span></div>
+      <div class="control"><div class="mark">✓</div><h2>Authenticated streams</h2><p>JWT API and WebSocket sessions.</p></div>
+      <div class="control"><div class="mark">✓</div><h2>Observable execution</h2><p>Structured logs, Prometheus, Grafana, task history.</p></div>
+      <div class="control"><div class="mark">✓</div><h2>Local boundary</h2><p>Per-user paths and loopback-only desktop backend.</p></div>
+      <div class="control"><div class="mark">✓</div><h2>Sandbox gate</h2><p>Docker-required code execution; no host fallback.</p></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

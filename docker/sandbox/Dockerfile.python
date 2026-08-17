@@ -1,0 +1,8 @@
+FROM python:3.11-slim
+
+RUN useradd --create-home --uid 10001 sandbox && mkdir -p /workspace && chown -R sandbox:sandbox /workspace
+RUN pip install --no-cache-dir --disable-pip-version-check numpy pandas requests beautifulsoup4 lxml scipy matplotlib
+WORKDIR /workspace
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+USER sandbox
+CMD ["sleep", "infinity"]

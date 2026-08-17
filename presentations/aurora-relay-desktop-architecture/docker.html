@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Docker integration strategy</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+.slide-container{width:1280px;min-height:720px;background:#0b1013;color:#e7eeed;padding:56px 74px 30px;font-family:Inter,Arial,sans-serif;position:relative}
+.eyebrow{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.18em}.rule{display:inline-block;width:55px;height:1px;background:#53d8d1;margin-right:14px;vertical-align:middle}
+h1{margin:24px 0 8px;font:800 47px/.98 Georgia,serif;letter-spacing:-.05em;color:#f3f6f5;max-width:720px}h1 em{color:#53d8d1;font-style:normal}
+.sub{max-width:670px;color:#a9b9b8;font-size:16px;line-height:1.4;font-weight:300}
+.flow{display:grid;grid-template-columns:1fr 90px 1fr 90px 1fr;align-items:center;margin-top:54px;border-top:1px solid #365255;border-bottom:1px solid #365255;min-height:144px}
+.node{padding-top:22px;padding-bottom:18px}.node .tag{font:11px ui-monospace,monospace;color:#f2b84b;letter-spacing:.1em}.node strong{display:block;font-size:24px;margin-top:8px;color:#f3f6f5}.node p{margin:8px 0 0;color:#829494;font-size:13px;line-height:1.4;max-width:220px}.arrow{text-align:center;color:#53d8d1;font:24px ui-monospace,monospace}.arrow small{display:block;color:#829494;font-size:10px;margin-top:5px;letter-spacing:.06em}
+.policy{position:absolute;left:74px;right:74px;bottom:48px;display:grid;grid-template-columns:220px 1fr 1fr 1fr 1fr;border-top:2px solid #f2b84b;padding-top:14px}
+.policy-title{font-size:17px;font-weight:600;color:#f2b84b}.rule-item{padding-left:18px;border-left:1px solid #365255;color:#a9b9b8;font:12px/1.42 ui-monospace,monospace}.rule-item strong{display:block;color:#e7eeed;font:13px Inter,Arial,sans-serif;margin-bottom:5px}
+.badge{position:absolute;right:74px;top:62px;color:#f2b84b;font:11px ui-monospace,monospace;letter-spacing:.1em}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="eyebrow"><span class="rule"></span>06 / SANDBOX INTEGRATION</div>
+  <div class="badge">REQUIRED FOR CODE EXECUTION</div>
+  <h1>Isolation is a prerequisite,<br><em>not an optimization.</em></h1>
+  <p class="sub">Aurora Relay enables the code executor only after Docker proves that a healthy server is reachable. A CLI binary alone is not enough.</p>
+  <div class="flow">
+    <div class="node"><div class="tag">01 / PROBE</div><strong>docker version</strong><p>Ask the local Docker client for a live server response.</p></div>
+    <div class="arrow">→<small>HEALTHY?</small></div>
+    <div class="node"><div class="tag">02 / GATE</div><strong>Sandbox ready</strong><p>Enable the container executor with its resource, network, and filesystem policy.</p></div>
+    <div class="arrow">→<small>OTHERWISE</small></div>
+    <div class="node"><div class="tag">03 / FAIL-CLOSED</div><strong>Execution disabled</strong><p>Keep code tools unavailable. Never substitute a host shell.</p></div>
+  </div>
+  <div class="policy"><div class="policy-title">BOUNDARY<br>CONTROLS</div><div class="rule-item"><strong>No TCP exposure</strong>Never ask users to expose the Docker daemon over a public or unauthenticated socket.</div><div class="rule-item"><strong>No broad mounts</strong>Do not grant unrestricted host filesystem access to an execution container.</div><div class="rule-item"><strong>Explicit policy</strong>Keep CPU, memory, time, network, and file boundaries enforced by the sandbox layer.</div><div class="rule-item"><strong>Auditable state</strong>Record runtime health and tool availability so the UI explains why execution is unavailable.</div></div>
+</div>
+</body>
+</html>

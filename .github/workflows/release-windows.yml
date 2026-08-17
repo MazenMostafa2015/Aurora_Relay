@@ -1,0 +1,163 @@
+name: Windows Desktop Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish a GitHub Release after signing"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  AURORA_FRONTEND_DIR: ${{ github.workspace }}/frontend
+
+jobs:
+  validate:
+    name: Validate source and frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest pytest-asyncio httpx pyinstaller
+
+      - name: Compile and test backend
+        run: |
+          python -m compileall -q backend mcp_servers
+          PYTHONPATH=backend pytest -q tests backend/tests
+
+      - name: Set up pnpm and Node.js
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Validate frontend
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm validate
+
+  build-sign-release:
+    name: Build and sign Windows installers
+    needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 45
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install backend build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Set up pnpm and Node.js
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Build unsigned Windows installer
+        shell: bash
+        env:
+          FRONTEND_DIR: ${{ github.workspace }}/frontend
+          PYTHON: python
+        run: |
+          bash desktop/scripts/build-all.sh win
+
+      - name: Sign Windows artifacts
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+          WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_BASE64) -or [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_PASSWORD)) {
+            throw 'Release environment signing secrets are not configured. Refusing to publish unsigned Windows artifacts.'
+          }
+          ./desktop/scripts/sign-windows.ps1 `
+            -ReleaseDirectory desktop/release `
+            -PfxBase64 $env:WINDOWS_SIGNING_PFX_BASE64 `
+            -PfxPassword $env:WINDOWS_SIGNING_PFX_PASSWORD `
+            -TimestampUrl $env:WINDOWS_TIMESTAMP_URL
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem desktop/release -File | Where-Object { $_.Name -notmatch 'SHA256SUMS|\.blockmap$' } |
+            Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path | Split-Path -Leaf)" } |
+            Set-Content -Encoding ascii desktop/release/SHA256SUMS
+
+      - name: Create provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: desktop/release/*.exe
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurora-relay-windows-${{ github.sha }}
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.blockmap
+            desktop/release/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { "build-$env:GITHUB_RUN_NUMBER" }
+          $releaseArgs = @($tag, 'desktop/release/*.exe', 'desktop/release/SHA256SUMS', '--generate-notes')
+          if ($env:GITHUB_REF -like 'refs/tags/*') {
+            $releaseArgs += '--verify-tag'
+          }
+          gh release create @releaseArgs

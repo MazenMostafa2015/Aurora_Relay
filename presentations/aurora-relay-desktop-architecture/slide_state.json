@@ -1,0 +1,144 @@
+{
+  "project_info": {
+    "title": "Aurora Relay Desktop Application",
+    "created": 1786749713.453,
+    "last_updated": 1786750120.102,
+    "total_slides": 12
+  },
+  "slides": [
+    {
+      "id": "title",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "thesis",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "architecture",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "lifecycle",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "desktop_runtime",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "ollama",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "docker",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "onboarding",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "release",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "controls",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "map",
+      "state": "edited",
+      "pageNum": 11
+    },
+    {
+      "id": "closing",
+      "state": "edited",
+      "pageNum": 12
+    }
+  ],
+  "outline": [
+    {
+      "id": "title",
+      "title": "Aurora Relay Desktop Application",
+      "summary": "Architecture and runtime integration strategy for a local-first AI command center with MCP orchestration and fail-closed execution.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "thesis",
+      "title": "One workspace. Many capabilities. Explicit control.",
+      "summary": "Product thesis and the three commitments: local-first, composable MCP capabilities, and fail-closed execution.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "architecture",
+      "title": "From intent to controlled action",
+      "summary": "Layered system architecture spanning the experience, agent, MCP, capability, and infrastructure layers.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "lifecycle",
+      "title": "A visible execution loop",
+      "summary": "Task lifecycle from user goal through planning, approval, MCP tool calls, observations, state updates, and result.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "desktop_runtime",
+      "title": "Electron is the local control plane",
+      "summary": "Desktop boot sequence, backend lifecycle, renderer isolation, preload boundary, loopback binding, and shutdown.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "ollama",
+      "title": "Local inference without silent installation",
+      "summary": "Ollama detection strategy, explicit model choice, local-first defaults, and safe continuation when unavailable.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "docker",
+      "title": "Isolation is a prerequisite, not an optimization",
+      "summary": "Docker health checks, sandbox enablement, and fail-closed behavior without host execution fallback.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "onboarding",
+      "title": "Progressive disclosure with safe recovery",
+      "summary": "First-run wizard progress stages, status states, diagnostics, official installation links, and retry behavior.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "release",
+      "title": "Build once from source; release natively per platform",
+      "summary": "Frontend build, PyInstaller, Electron Builder, platform artifact matrix, signing, smoke tests, checksums, and publish gates.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "controls",
+      "title": "Trust is a lifecycle, not a launch feature",
+      "summary": "Current operational controls and next release gates for native CI, model/image preflight, signed updates, and enterprise operations.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "map",
+      "title": "Where the strategy lives",
+      "summary": "Repository map connecting lifecycle, setup, backend, packaging, build orchestration, and runtime documentation.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "closing",
+      "title": "Capability visible. Local by default. Safe under failure.",
+      "summary": "Closing synthesis and references for Electron Builder, Ollama, Docker, Apple notarization, and Microsoft signing.",
+      "image_plan": "Use a suitable image if needed"
+    }
+  ]
+}

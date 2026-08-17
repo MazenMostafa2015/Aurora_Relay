@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Capability visible. Local by default. Safe under failure.</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+.slide-container{width:1280px;min-height:720px;background:#0b1013;color:#e7eeed;position:relative;padding-top:62px;font-family:Inter,Arial,sans-serif;overflow:hidden}
+.eyebrow{margin-left:74px;color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.18em}.rule{display:inline-block;width:60px;height:1px;background:#53d8d1;margin-right:14px;vertical-align:middle}
+.headline{margin:88px 0 0 74px;width:690px;font:800 66px/.93 Georgia,serif;letter-spacing:-.055em;color:#f3f6f5}.headline em{font-style:normal;color:#53d8d1}
+/* moved synthesis up slightly and trimmed internal padding */
+.synthesis{position:absolute;right:74px;top:122px;width:280px;border-top:1px solid #f2b84b;padding-top:10px;color:#a9b9b8;font-size:15px;line-height:1.5}
+.synthesis strong{display:block;color:#f2b84b;font:12px ui-monospace,monospace;letter-spacing:.12em;margin-bottom:8px}.synthesis b{color:#e7eeed;font-weight:600}
+.axis{position:absolute;right:74px;top:348px;width:350px;height:1px;background:#365255}.axis:before{content:'';position:absolute;left:0;top:-4px;width:9px;height:9px;border-radius:50%;background:#53d8d1;box-shadow:0 0 26px rgba(83,216,209,.45)}.axis:after{content:'';position:absolute;right:0;top:-4px;width:9px;height:9px;border-radius:50%;background:#f2b84b}
+/* tightened posture spacing and moved up */
+.posture{position:absolute;left:74px;top:440px;display:grid;grid-template-columns:repeat(3,145px);gap:18px}.posture div{border-top:1px solid #365255;padding-top:8px;color:#829494;font:11px ui-monospace,monospace}.posture strong{display:block;color:#e7eeed;font:16px Inter,Arial,sans-serif;margin-bottom:4px}
+/* pulled refs/footer slightly up to reduce overall page extent */
+.refs{position:absolute;left:74px;right:74px;bottom:22px;border-top:1px solid #26383b;padding-top:10px;color:#53686a;font:10px/1.4 ui-monospace,monospace;display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:20px}.refs a{color:#829494;text-decoration:none}.refs b{color:#f2b84b;font-weight:400}
+.footer{position:absolute;right:74px;bottom:26px;color:#53686a;font:10px ui-monospace,monospace;letter-spacing:.08em;text-align:right}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="eyebrow"><span class="rule"></span>10 / CLOSING SYNTHESIS</div>
+  <div class="headline">Capability visible.<br><em>Local by default.</em><br>Safe under failure.</div>
+  <div class="synthesis"><strong>THE DESKTOP THESIS</strong>Aurora Relay is not merely a wrapper around a web dashboard. It is a controlled local runtime that coordinates the UI, backend, MCP tools, inference providers, and sandbox boundary while making each important capability explicit to the user.</div>
+  <div class="axis"></div>
+  <div class="posture"><div><strong>VISIBLE</strong>state and evidence</div><div><strong>LOCAL</strong>privacy-forward defaults</div><div><strong>SAFE</strong>no unsafe fallback</div></div>
+  <div class="refs"><div><b>[1]</b> <a href="https://www.electron.build/docs/">electron.build/docs</a><br><b>[2]</b> <a href="https://ollama.com/download">ollama.com/download</a></div><div><b>[3]</b> <a href="https://docs.docker.com/desktop/">docs.docker.com/desktop</a><br><b>[4]</b> <a href="https://docs.docker.com/engine/install/">docs.docker.com/engine/install</a></div><div><b>[5]</b> <a href="https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution">Apple notarization</a><br><b>[6]</b> <a href="https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options">Microsoft code signing</a></div></div>
+  <div class="footer">AURORA RELAY / ARCHITECTURE &amp; INTEGRATION STRATEGY</div>
+</div>
+</body>
+</html>

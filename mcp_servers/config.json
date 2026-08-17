@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "browser": {
+      "command": "python3",
+      "args": ["-m", "mcp_servers.browser.server"],
+      "env": {
+        "PLAYWRIGHT_BROWSER": "chromium",
+        "PLAYWRIGHT_HEADLESS": "true",
+        "MCP_LOG_PATH": "./logs/browser.log",
+        "MCP_ARTIFACT_DIR": "./artifacts"
+      },
+      "allowedTools": ["browse_url", "search_web", "click_element", "extract_data", "fill_form", "wait_for", "take_screenshot"]
+    },
+    "filesystem": {
+      "command": "python3",
+      "args": ["-m", "mcp_servers.filesystem.server"],
+      "env": {
+        "WORKSPACE_DIR": "./workspace",
+        "MCP_LOG_PATH": "./logs/filesystem.log"
+      },
+      "allowedTools": ["read_file", "write_file", "list_directory", "delete_file", "get_file_info"]
+    }
+  }
+}

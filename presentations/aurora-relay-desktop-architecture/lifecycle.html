@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A visible execution loop</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+.slide-container{width:1280px;min-height:720px;background:#0b1013;color:#e7eeed;font-family:Inter,Arial,sans-serif;position:relative;overflow:hidden;margin-top:-1px}
+.inner{margin-left:74px;margin-right:74px;padding-top:56px}
+.eyebrow{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.18em}
+.rule{display:inline-block;width:55px;height:1px;background:#53d8d1;margin-right:14px;vertical-align:middle}
+h1{margin:24px 0 10px;font:800 48px/.98 Georgia,serif;letter-spacing:-.045em;color:#f3f6f5}
+h1 em{font-style:normal;color:#53d8d1}
+.sub{color:#829494;font-size:15px;line-height:1.4;max-width:620px}
+.rail{position:relative;margin-top:64px;display:grid;grid-template-columns:repeat(6,1fr);column-gap:0}
+.rail:before{content:"";position:absolute;left:18px;right:18px;top:12px;height:1px;background:#365255}
+.step{position:relative;min-height:184px;padding-right:22px}
+.dot{position:relative;width:25px;height:25px;background:#0b1013;border:1px solid #53d8d1;color:#53d8d1;display:grid;place-items:center;font:11px ui-monospace,monospace;z-index:1}
+.step:nth-child(3) .dot,.step:nth-child(6) .dot{border-color:#f2b84b;color:#f2b84b}
+.step h2{font-size:17px;line-height:1.15;margin:19px 0 8px;color:#e7eeed;font-weight:600}
+.step p{font-size:13px;line-height:1.42;color:#829494;margin:0;max-width:145px}
+.step code{display:block;margin-top:12px;color:#53d8d1;font:10px ui-monospace,monospace;line-height:1.35}
+.observe{border-top:1px solid #365255;margin-top:12px;padding-top:12px;display:grid;grid-template-columns:210px 1fr 240px;gap:26px;align-items:start}
+.observe strong{color:#f2b84b;font:12px ui-monospace,monospace;letter-spacing:.12em}
+.observe p{margin:0;color:#a9b9b8;font-size:14px;line-height:1.45}
+.observe aside{color:#829494;font:11px/1.5 ui-monospace,monospace;text-align:right}
+.observe aside b{color:#e7eeed;font:13px Inter,Arial,sans-serif;display:block;margin-bottom:4px}
+.footer{position:absolute;left:74px;right:74px;bottom:24px;color:#53686a;font:10px ui-monospace,monospace;letter-spacing:.08em}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="inner">
+    <div class="eyebrow"><span class="rule"></span>03 / TASK LIFECYCLE</div>
+    <h1>A visible <em>execution loop.</em></h1>
+    <div class="sub">The system moves from intent to evidence through explicit boundaries, not an opaque “run” state.</div>
+    <div class="rail">
+      <div class="step"><div class="dot">01</div><h2>User goal</h2><p>Natural-language intent enters the workspace.</p><code>“Map the current AI tooling landscape”</code></div>
+      <div class="step"><div class="dot">02</div><h2>Coordinator</h2><p>Complexity and required capabilities are identified.</p><code>scope · tools · risk</code></div>
+      <div class="step"><div class="dot">03</div><h2>Approval</h2><p>Human control is preserved before consequential actions.</p><code>plan accepted</code></div>
+      <div class="step"><div class="dot">04</div><h2>MCP call</h2><p>The Executor routes a step to a selected server.</p><code>browser.search</code></div>
+      <div class="step"><div class="dot">05</div><h2>Observation</h2><p>Tool output becomes evidence for the next decision.</p><code>source pass · status</code></div>
+      <div class="step"><div class="dot">06</div><h2>Result</h2><p>State, evidence, and outcome return to the user.</p><code>brief · audit trail</code></div>
+    </div>
+    <div class="observe"><strong>OBSERVABILITY LAYER</strong><p>WebSocket updates stream task progress into the dashboard while structured logs and tool-call records preserve the execution history.</p><aside><b>Every step has a state.</b>Queued · running · blocked · done</aside></div>
+  </div>
+  <div class="footer">COORDINATOR → PLAN → APPROVAL BOUNDARY → TOOL → OBSERVATION → RESULT</div>
+</div>
+</body>
+</html>

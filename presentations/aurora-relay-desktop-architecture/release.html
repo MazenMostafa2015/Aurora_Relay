@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build once from source; release natively per platform</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+.slide-container{width:1280px;min-height:720px;background:#0b1013;color:#e7eeed;padding:56px 74px 18px;font-family:Inter,Arial,sans-serif;position:relative}
+.eyebrow{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.18em}.rule{display:inline-block;width:55px;height:1px;background:#53d8d1;margin-right:14px;vertical-align:middle}
+h1{margin:25px 0 9px;max-width:680px;font:800 48px/.98 Georgia,serif;letter-spacing:-.05em;color:#f3f6f5}h1 em{color:#53d8d1;font-style:normal}.lede{max-width:710px;color:#a9b9b8;font-size:15px;line-height:1.4;margin:0}
+.pipeline{display:grid;grid-template-columns:1fr 42px 1fr 42px 1fr 42px 1fr 42px 1fr;align-items:stretch;margin-top:24px;border-top:1px solid #365255;border-bottom:1px solid #365255;min-height:128px}.stage{padding-top:12px;padding-right:10px}.stage .num{color:#f2b84b;font:11px ui-monospace,monospace;letter-spacing:.12em}.stage h2{margin:12px 0 7px;font-size:17px;line-height:1.1;color:#e7eeed}.stage p{margin:0;color:#829494;font-size:12px;line-height:1.35}.arrow{display:flex;align-items:center;justify-content:center;color:#53d8d1;font:19px ui-monospace,monospace}.arrow small{display:block;color:#53686a;font-size:9px;letter-spacing:.08em}
+.outputs{position:absolute;left:74px;right:74px;bottom:54px;border-top:2px solid #f2b84b;padding-top:8px;display:grid;grid-template-columns:210px 1fr 1fr 1fr;gap:20px}.output-title{color:#f2b84b;font-size:17px;font-weight:600;line-height:1.15}.output{min-height:95px;border-left:1px solid #365255;padding-left:17px}.output .tag{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.1em}.output h3{margin:8px 0 5px;color:#e7eeed;font-size:16px}.output p{margin:0;color:#a9b9b8;font:12px/1.4 ui-monospace,monospace}.note{position:absolute;right:74px;top:62px;width:215px;text-align:right;color:#829494;font:11px/1.45 ui-monospace,monospace}.note strong{display:block;color:#f2b84b;font:14px Inter,Arial,sans-serif;margin-bottom:5px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="eyebrow"><span class="rule"></span>08 / PACKAGING &amp; RELEASE</div>
+  <h1>Build once from source;<br><em>release natively per platform.</em></h1>
+  <p class="lede">The reproducible path is shared until native packaging. Trust enters at the platform runner: signing, smoke tests, checksums, and protected publishing.</p>
+  <div class="note"><strong>SOURCE → TRUSTED ARTIFACT</strong>The archive contains build inputs and policy. It does not contain signing keys, Ollama, Docker, or generated dependencies.</div>
+  <div class="pipeline">
+    <div class="stage"><div class="num">01 / UI</div><h2>React build</h2><p>Compile the bundled renderer from the frontend project.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="num">02 / API</div><h2>PyInstaller</h2><p>Freeze the FastAPI/MCP backend into aurora-backend.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="num">03 / SHELL</div><h2>Electron Builder</h2><p>Attach frontend and backend as packaged resources.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="num">04 / NATIVE</div><h2>Installer</h2><p>Generate NSIS, DMG, AppImage, and Debian artifacts.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="num">05 / TRUST</div><h2>Release gate</h2><p>Sign, smoke test, checksum, approve, publish.</p></div>
+  </div>
+  <div class="outputs">
+    <div class="output-title">PLATFORM<br>OUTPUTS</div>
+    <div class="output"><div class="tag">WINDOWS</div><h3>NSIS x64 / arm64</h3><p>Windows runner · Authenticode signing · clean-machine install test</p></div>
+    <div class="output"><div class="tag">MACOS</div><h3>DMG x64 / arm64</h3><p>macOS runner · Developer ID signing · notarization and stapling</p></div>
+    <div class="output"><div class="tag">LINUX</div><h3>AppImage + Debian</h3><p>Linux runner · package/repository policy · checksum and smoke test</p></div>
+  </div>
+</div>
+</body>
+</html>

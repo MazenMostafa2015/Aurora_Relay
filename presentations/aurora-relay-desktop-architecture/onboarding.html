@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>First-run onboarding</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+.slide-container{width:1280px;min-height:720px;background:#0b1013;color:#e7eeed;padding:48px 60px 8px;font-family:Inter,Arial,sans-serif;position:relative}
+.eyebrow{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.18em}.rule{display:inline-block;width:56px;height:1px;background:#53d8d1;margin-right:14px;vertical-align:middle}
+h1{margin:25px 0 14px;max-width:580px;font:800 47px/.98 Georgia,serif;letter-spacing:-.045em;color:#f3f6f5}h1 em{color:#53d8d1;font-style:normal}
+.lede{max-width:470px;color:#a9b9b8;font-size:17px;line-height:1.45;font-weight:300}
+.note{position:absolute;left:60px;bottom:80px;width:380px;border-top:1px solid #f2b84b;padding-top:8px;color:#a9b9b8;font:12px/1.45 ui-monospace,monospace}.note strong{display:block;color:#f2b84b;font:14px Inter,Arial,sans-serif;margin-bottom:5px}
+.panel{position:absolute;right:60px;top:48px;width:460px}
+.progress-label{display:flex;justify-content:space-between;color:#829494;font:11px ui-monospace,monospace;letter-spacing:.08em;margin-bottom:9px}.progress{height:5px;background:#1b2b2d;position:relative}.progress:after{content:'';position:absolute;left:0;top:0;width:72%;height:5px;background:#53d8d1}
+.steps{margin-top:14px;border-top:1px solid #365255}
+.step{display:grid;grid-template-columns:48px 1fr 90px;min-height:54px;align-items:center;border-bottom:1px solid #26383b}
+.step-no{font:14px ui-monospace,monospace;color:#f2b84b}.step h2{font-size:17px;margin:0 0 4px;font-weight:600}.step p{margin:0;color:#829494;font-size:12px;line-height:1.35}.state{text-align:right;font:11px ui-monospace,monospace;color:#829494}.ready .state{color:#53d8d1}.attention .state{color:#f2b84b}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#365255}.ready .dot{background:#53d8d1}.attention .dot{background:#f2b84b}
+.legend{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;color:#829494;font:11px/1.4 ui-monospace,monospace}.legend strong{display:block;color:#e7eeed;font:13px Inter,Arial,sans-serif;margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+<div class="eyebrow"><span class="rule"></span>07 / FIRST-RUN EXPERIENCE</div>
+<h1>Progressive disclosure<br>with <em>safe recovery.</em></h1>
+<p class="lede">The setup window makes runtime readiness visible without turning missing dependencies into unsafe defaults.</p>
+<div class="panel"><div class="progress-label"><span>WORKSPACE PREPARATION</span><span>72%</span></div><div class="progress"></div><div class="steps"><div class="step ready"><div class="step-no">01</div><div><h2>Secure workspace</h2><p>Per-user configuration and privacy defaults.</p></div><div class="state"><span class="dot"></span>READY</div></div><div class="step attention"><div class="step-no">02</div><div><h2>Local model runtime</h2><p>Probe Ollama; link to the official installer if absent.</p></div><div class="state"><span class="dot"></span>CHECK</div></div><div class="step attention"><div class="step-no">03</div><div><h2>Execution sandbox</h2><p>Probe Docker health; never substitute host execution.</p></div><div class="state"><span class="dot"></span>CHECK</div></div><div class="step"><div class="step-no">04</div><div><h2>Finish setup</h2><p>Save preferences and capability state.</p></div><div class="state"><span class="dot"></span>WAITING</div></div></div><div class="legend"><div><strong>READY</strong>capability enabled</div><div><strong>CHECK</strong>runtime attention</div><div><strong>DETAIL</strong>bounded diagnostics</div><div><strong>RETRY</strong>safe re-probe</div></div></div>
+<div class="note"><strong>FAIL-CLOSED BY DESIGN</strong>Missing Ollama disables local inference. Missing Docker disables code execution. The user can continue, but the application never falls back to a host shell.</div>
+</div>
+</body>
+</html>

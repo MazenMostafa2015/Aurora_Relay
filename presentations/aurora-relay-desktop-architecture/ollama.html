@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Local inference without silent installation</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+.slide-container{width:1280px;min-height:720px;background:#0b1013;color:#e7eeed;padding:56px 74px 12px;font-family:Inter,Arial,sans-serif;position:relative}
+.eyebrow{color:#53d8d1;font:11px ui-monospace,monospace;letter-spacing:.18em}.rule{display:inline-block;width:55px;height:1px;background:#53d8d1;margin-right:14px;vertical-align:middle}
+h1{margin:28px 0 10px;font:800 50px/.98 Georgia,serif;letter-spacing:-.05em;color:#f3f6f5;max-width:720px}h1 em{color:#53d8d1;font-style:normal}
+.lede{color:#a9b9b8;font-size:17px;line-height:1.45;max-width:690px;margin:0}
+.signal{position:absolute;left:74px;right:74px;top:290px;height:1px;background:#365255}
+.step{position:absolute;top:264px;width:180px}
+.step:nth-of-type(1){left:74px}.step:nth-of-type(2){left:344px}.step:nth-of-type(3){left:614px}.step:nth-of-type(4){left:884px}.dot{width:18px;height:18px;border-radius:50%;background:#53d8d1;box-shadow:0 0 0 7px #122426;margin-bottom:14px}.dot.amber{background:#f2b84b}.step h2{font-size:15px;margin:0 0 5px;color:#e7eeed}.step p{font:11px/1.45 ui-monospace,monospace;color:#829494;margin:0;max-width:170px}
+.status{position:absolute;right:74px;top:70px;width:212px;text-align:right;border-top:1px solid #53d8d1;padding-top:10px;color:#829494;font:11px/1.5 ui-monospace,monospace}.status strong{display:block;color:#53d8d1;font:14px Inter,Arial,sans-serif;margin-bottom:5px}
+.rules{position:absolute;left:74px;right:74px;bottom:24px;border-top:1px solid #365255;display:grid;grid-template-columns:repeat(4,1fr);column-gap:26px}
+.ruleitem{padding-top:15px;border-bottom:1px solid #26383b;min-height:92px}.ruleitem span{display:block;color:#f2b84b;font:12px ui-monospace,monospace;margin-bottom:8px}.ruleitem p{margin:0;color:#a9b9b8;font-size:13px;line-height:1.35}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="eyebrow"><span class="rule"></span>05 / OLLAMA INTEGRATION</div>
+  <h1>Local inference<br><em>without silent installation.</em></h1>
+  <p class="lede">Ollama is the preferred local path when users want prompts and results to remain on their machine. Readiness is earned through an explicit health check.</p>
+  <div class="status"><strong>OPTIONAL RUNTIME</strong>Local-model preference stays on. Capability stays off until the runtime is verified.</div>
+  <div class="signal"></div>
+  <div class="step"><div class="dot"></div><h2>First-run probe</h2><p>ollama --version</p></div>
+  <div class="step"><div class="dot amber"></div><h2>User decision</h2><p>Install, start, or continue without local inference</p></div>
+  <div class="step"><div class="dot"></div><h2>Re-check</h2><p>Retry after installation or service startup</p></div>
+  <div class="step"><div class="dot amber"></div><h2>Capability state</h2><p>Ready or unavailable — never misrepresented</p></div>
+  <div class="rules">
+    <div class="ruleitem"><span>01 / NO BUNDLE</span><p>Do not silently install a privileged third-party runtime inside the Aurora package.</p></div>
+    <div class="ruleitem"><span>02 / NO AUTO-PULL</span><p>Model choice, download size, and license terms require explicit user consent.</p></div>
+    <div class="ruleitem"><span>03 / OFFICIAL PATH</span><p>Link to Ollama’s official installer and let the user or administrator manage deployment.</p></div>
+    <div class="ruleitem"><span>04 / SAFE CONTINUE</span><p>The app remains usable while local-model readiness stays clearly unavailable.</p></div>
+  </div>
+</div>
+</body>
+</html>

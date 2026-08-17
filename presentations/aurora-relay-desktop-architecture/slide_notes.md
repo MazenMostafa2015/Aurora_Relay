@@ -1,0 +1,47 @@
+# 1 - From intent to controlled action
+
+The architecture is organized into five distinct layers to keep planning, routing, and capabilities completely legible. The experience layer connects the React dashboard and Electron shell to the agent and MCP layers, which manage routing and tool discovery. Underneath, the capability layer drives tools like browsers, filesystems, and Docker executors. Building on our product thesis, desktop mode packages these components together while keeping the backend loopback-only and minimizing renderer privileges. This structure enables a clear, step-by-step execution loop for every task.
+
+# 2 - Capability visible. Local by default. Safe under failure.
+
+Aurora Relay is much more than a simple web wrapper in a desktop frame. It's a fully controlled local runtime coordinating your user interface, backend services, MCP tools, inference providers, and sandbox boundaries without compromise. By keeping capabilities visible, prioritizing local-first privacy, and failing closed instead of taking dangerous shortcuts, we give engineering and security teams absolute confidence. You get inspectable workflows, explicit consent flows, and robust isolation out of the box. Thank you for walking through our architecture and runtime integration strategy.
+
+# 3 - Trust is a lifecycle, not a launch feature
+
+Trust isn't just a launch requirement; it's an ongoing lifecycle that we must prove on every release. We've already implemented core controls like JWT authentication, Prometheus metrics, per-user paths, and our strict Docker execution gate. But we aren't stopping there. Our upcoming release gates focus on native CI builds across all three major operating systems, robust runtime preflight checks for Ollama and Docker, and signed updater feeds with verified artifact provenance. By testing against clean machines with missing or restricted runtimes, we ensure our security posture remains rock solid under real-world conditions. And speaking of how we build this, let's look at where these strategies actually live in the codebase.
+
+# 4 - Electron is the local control plane
+
+Electron serves as the local control plane by managing process lifecycles, window isolation, and the embedded FastAPI service. Building on our execution loop, the main process binds the backend strictly to loopback addresses and enforces least-privilege rendering with context isolation and sandboxing. The backend manages local mutable state in platform-specific user directories and defaults to SQLite. This robust desktop control plane sets the stage for integrating local inference providers securely.
+
+# 5 - Isolation is a prerequisite, not an optimization
+
+Building on our approach to optional runtimes, we treat isolation as a mandatory prerequisite rather than a simple optimization. Code execution inside Aurora Relay requires a healthy Docker daemon, and a local CLI binary alone is never enough to open the sandbox. We probe the Docker version to verify daemon health, and if that probe fails, the system fails closed by keeping code tools disabled rather than falling back to an unmanaged host shell. We never expose the Docker daemon over TCP or mount broad host paths, ensuring that all resource limits and network policies remain strictly enforced. Let's look at how we present these runtime checks to the user during initial setup.
+
+# 6 - A visible execution loop
+
+Task execution moves from intent to evidence through an explicit sequence rather than an opaque loop. The planner decomposes goals into dependency-aware steps, the coordinator manages execution, and the monitor tracks progress while WebSocket updates keep the dashboard synchronized. Following our layered architecture, every tool call pauses for necessary approvals and produces inspectable observations. This visible loop feeds directly into how the Electron desktop runtime controls local processes.
+
+# 7 - Where the strategy lives
+
+If you want to know how our architecture translates into code, the repository map tells the whole story. We keep our runtime lifecycle, security boundaries, packaging configuration, and documentation closely aligned so they evolve together without drift. From the Electron main process and secure preload scripts to the packaged FastAPI entrypoint and fail-closed sandbox policy, every component has a predictable home. Our build scripts orchestrate the frontend compilation, PyInstaller backend freezing, and Electron Builder targets into native installers like our signed Windows NSIS package. This structure lets us maintain a portable source while enforcing strict release gates across platforms. Everything connects back to our core product thesis.
+
+# 8 - Local inference without silent installation
+
+When configuring local inference, we want to give users full control without making assumptions about their system. Ollama is entirely optional, and we never silently install it or auto-pull models without explicit consent. Building this out requires verifying the runtime through a first-run probe that checks the command version and service health. If Ollama isn't present, we provide a link to the official installer and allow safe continuation so the app remains fully usable. This guarantees that local inference is treated as a capability that becomes ready only after a verified runtime check. And this brings us directly to how we handle code execution and system isolation.
+
+# 9 - Progressive disclosure with safe recovery
+
+Following our fail-closed execution rules, the first-run experience guides users through setup using progressive disclosure and safe recovery paths. The onboarding wizard steps through workspace creation, Ollama probing, Docker verification, and final preference saving without hiding system state. When a runtime like Docker or Ollama is missing, the interface displays an amber warning with official install links and recovery guidance while disabling the affected capability. The application continues gracefully without ever substituting an unsafe host shell or bypassing our security boundaries. This philosophy of verification and trust carries directly into how we package and distribute the software.
+
+# 10 - Build once from source; release natively per platform
+
+To deliver secure binaries across operating systems, our build pipeline starts from source and ends with cryptographically signed native installers. We compile the React frontend and package the FastAPI backend using PyInstaller before Electron Builder bundles them into platform-specific targets. Windows builds require Authenticode signing via NSIS, macOS relies on Developer ID signing and notarization, and Linux uses AppImage and Debian packages with repository policies. Crucially, the source archive never includes signing keys, runtimes like Ollama or Docker, or pre-generated dependencies. Every release must pass through strict signing, smoke testing, and checksum verification before it ever reaches an operator.
+
+# 11 - One workspace. Many capabilities. Explicit control.
+
+Aurora Relay turns natural-language goals into fully visible and inspectable workflows. We make three strict product commitments: a local-first stance preferring Ollama for inference, a composable architecture using MCP servers behind a registry, and a fail-closed execution model requiring a healthy Docker runtime. This foundation ensures that capability is never hidden behind a single run button. Moving from this core thesis, we examine how the system is layered to maintain strict operational boundaries.
+
+# 12 - Aurora Relay Desktop Application
+
+We are introducing Aurora Relay as a local-first AI command center designed for engineering leaders and security reviewers. The application combines Model Context Protocol orchestration with a secure Electron shell and fail-closed execution. You will see how every runtime, tool, and boundary exposes inspectable state rather than hiding actions behind an opaque automation layer.
