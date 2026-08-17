@@ -8,7 +8,6 @@ os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 os.environ["JWT_SECRET_KEY"] = "test-only-jwt-secret-not-for-production-0123456789-abcdef-0123456789"
 
 from fastapi.testclient import TestClient
-
 from app.main import app
 from app.database.session import engine
 from app.database.models import Base
