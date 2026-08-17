@@ -59,7 +59,7 @@ try {
             $signature = Get-AuthenticodeSignature -FilePath $installer.FullName
             $actualThumbprint = ($signature.SignerCertificate.Thumbprint -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
             if ($actualThumbprint -ne $internalCertificateThumbprint) {
-                throw "Internal signing certificate mismatch for $($installer.Name)"
+                throw "Internal signing certificate mismatch for $($installer.Name). Expected $internalCertificateThumbprint but the signing PFX produced $actualThumbprint. Update the protected environment pin only after confirming this is the intended internal certificate."
             }
             if ([string]$signature.Status -notin @('Valid', 'NotTrusted')) {
                 throw "Internal signature verification failed for $($installer.Name): $($signature.Status)"
