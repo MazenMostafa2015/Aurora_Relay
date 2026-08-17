@@ -7,7 +7,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-TEST_DB = Path(__file__).resolve().parents[1] / "data" / "phase8_test.db"
+_default_test_db = Path(__file__).resolve().parent / "data" / "phase8_test.db"
+TEST_DB = Path(os.environ.get("AURORA_TEST_DB", _default_test_db)).expanduser().resolve()
+TEST_DB.parent.mkdir(parents=True, exist_ok=True)
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 os.environ["JWT_SECRET_KEY"] = "test-only-jwt-secret-not-for-production-0123456789-abcdef-0123456789"
 os.environ["ALLOWED_HOSTS"] = '["localhost", "127.0.0.1", "testserver"]'
@@ -21,7 +23,6 @@ from tests.fixtures.test_data import unique_user  # noqa: E402
 
 @pytest.fixture(scope="session", autouse=True)
 def isolated_database():
-    TEST_DB.parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     yield
