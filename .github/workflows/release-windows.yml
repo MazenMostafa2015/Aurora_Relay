@@ -77,6 +77,7 @@ jobs:
 
   build-sign-release:
     name: Build and sign Windows installers
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
     needs: validate
     runs-on: windows-latest
     timeout-minutes: 45
