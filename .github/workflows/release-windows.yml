@@ -173,7 +173,42 @@ jobs:
             ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path | Split-Path -Leaf)" } |
             Set-Content -Encoding ascii desktop/release/SHA256SUMS
 
-      - name: Create provenance attestation
+      - name: Generate deterministic provenance manifest
+        shell: pwsh
+        run: |
+          $artifacts = @(Get-ChildItem desktop/release -Filter '*.exe' -File |
+            Sort-Object Name |
+            ForEach-Object {
+              [ordered]@{
+                name = $_.Name
+                sha256 = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              }
+            })
+          if ($artifacts.Count -eq 0) {
+            throw 'No Windows installer executables were available for the provenance manifest.'
+          }
+          $manifest = [ordered]@{
+            schema = 'aurora-relay-release-provenance/v1'
+            repository = $env:GITHUB_REPOSITORY
+            ref = $env:GITHUB_REF
+            revision = $env:GITHUB_SHA
+            workflow = $env:GITHUB_WORKFLOW
+            run = [ordered]@{
+              id = $env:GITHUB_RUN_ID
+              attempt = $env:GITHUB_RUN_ATTEMPT
+              url = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+            }
+            generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+            artifacts = $artifacts
+            github_artifact_attestation = [ordered]@{
+              attempted = $true
+              note = 'GitHub artifact attestations are an additional platform-dependent claim; inspect the workflow summary for availability.'
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 desktop/release/provenance.json
+
+      - name: Attempt GitHub provenance attestation
+        continue-on-error: true
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: desktop/release/*.exe
@@ -186,6 +221,7 @@ jobs:
             desktop/release/*.exe
             desktop/release/*.blockmap
             desktop/release/SHA256SUMS
+            desktop/release/provenance.json
           if-no-files-found: error
           retention-days: 14
 
@@ -196,7 +232,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { "build-$env:GITHUB_RUN_NUMBER" }
-          $releaseArgs = @($tag, 'desktop/release/*.exe', 'desktop/release/SHA256SUMS', '--generate-notes')
+          $releaseArgs = @($tag, 'desktop/release/*.exe', 'desktop/release/SHA256SUMS', 'desktop/release/provenance.json', '--generate-notes')
           if ($env:GITHUB_REF -like 'refs/tags/*') {
             $releaseArgs += '--verify-tag'
           }
