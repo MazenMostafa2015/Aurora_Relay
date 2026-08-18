@@ -168,6 +168,23 @@ test("navigation, task submission, attachment selection, and feedback controls a
   await expect(page.getByText("Model selection is managed by the local Ollama runtime.")).toBeVisible();
 });
 
+test("release evidence exposes the signed installer and locally inspectable verification ledger", async ({ page }) => {
+  await page.context().grantPermissions(["clipboard-write"]);
+  await mockLocalApi(page);
+  await page.goto("/");
+  await signIn(page);
+
+  await page.getByRole("button", { name: "Release evidence", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Release evidence" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Release assets" })).toBeVisible();
+  await expect(page.getByText("Aurora-Relay-0.8.22-win-x64.exe", { exact: true })).toBeVisible();
+  await expect(page.getByText("Digest matched", { exact: true })).toBeVisible();
+  await expect(page.getByText("Internal trust boundary", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download Aurora-Relay-0.8.22-win-x64.exe" })).toHaveAttribute("href", /Aurora-Relay-0.8.22-win-x64.exe/);
+  await page.getByRole("button", { name: "Copy Installer SHA-256" }).click();
+  await expect(page.getByText("Installer SHA-256 copied")).toBeVisible();
+});
+
 test("sign-in dialog supports local account creation", async ({ page }) => {
   await mockLocalApi(page);
   await page.goto("/");

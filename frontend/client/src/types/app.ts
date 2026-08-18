@@ -1,5 +1,5 @@
 // Aurora Relay style reminder: keep data contracts crisp, operational, and easy to scan.
-export type ViewKey = "overview" | "tasks" | "tools" | "connectors" | "agent_loop" | "settings";
+export type ViewKey = "overview" | "tasks" | "tools" | "connectors" | "agent_loop" | "release_evidence" | "settings";
 export type TaskStatus = "executing" | "waiting" | "completed" | "failed" | "paused";
 
 export interface User {
