@@ -1,5 +1,5 @@
 // Aurora Relay style reminder: keep data contracts crisp, operational, and easy to scan.
-export type ViewKey = "overview" | "tasks" | "tools" | "settings";
+export type ViewKey = "overview" | "tasks" | "tools" | "connectors" | "settings";
 export type TaskStatus = "executing" | "waiting" | "completed" | "failed" | "paused";
 
 export interface User {
@@ -81,4 +81,72 @@ export interface WorkspaceState {
   setTaskSubmitting: (isSubmitting: boolean) => void;
   acceptSubmittedTask: (task: Task) => void;
   recordTaskSubmissionFailure: (message: string) => void;
+}
+
+export type ConnectorProvider = "github" | "revit";
+export type ConnectorStatus = "not_configured" | "testing" | "connected" | "needs_attention" | "disabled";
+
+export interface ConnectorRecord {
+  id: string;
+  provider: ConnectorProvider;
+  display_name: string;
+  status: ConnectorStatus;
+  sort_order: number;
+  configuration: Record<string, unknown>;
+  credential_configured: boolean;
+  capabilities: string[];
+  last_tested_at: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ConnectorDraft {
+  provider: ConnectorProvider;
+  display_name: string;
+  configuration: Record<string, unknown>;
+  credential?: string;
+  credential_label?: string;
+}
+
+export interface ConnectorActionResult {
+  ok: boolean;
+  provider: ConnectorProvider;
+  action: string;
+  message: string;
+  data: Record<string, unknown>;
+}
+
+export interface RevitPlan {
+  operation_id: string;
+  state: "planned";
+  requires_confirmation: true;
+  preview: Record<string, unknown>;
+  message: string;
+}
+
+export interface RevitOperationResult {
+  operation_id: string;
+  state: "applied" | "failed" | "rejected";
+  message: string;
+  result: Record<string, unknown>;
+}
+
+export interface ConnectorState {
+  connectors: ConnectorRecord[];
+  selectedConnectorId: string | null;
+  query: string;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
+  pendingRevitPlan: RevitPlan | null;
+  setQuery: (query: string) => void;
+  selectConnector: (connectorId: string | null) => void;
+  setLoading: (value: boolean) => void;
+  setSaving: (value: boolean) => void;
+  setError: (value: string | null) => void;
+  setConnectors: (connectors: ConnectorRecord[]) => void;
+  upsertConnector: (connector: ConnectorRecord) => void;
+  removeConnector: (connectorId: string) => void;
+  setPendingRevitPlan: (plan: RevitPlan | null) => void;
 }

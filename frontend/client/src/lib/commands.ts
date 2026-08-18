@@ -2,8 +2,9 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { api, describeApiError } from "@/lib/api";
 import { useAppStore } from "@/store/appStore";
+import { useConnectorStore } from "@/store/connectorStore";
 import { useSessionStore } from "@/store/sessionStore";
-import type { Task, ViewKey } from "@/types/app";
+import type { ConnectorDraft, ConnectorRecord, RevitPlan, Task, ViewKey } from "@/types/app";
 
 export type CommandResult =
   | { ok: true; message?: string }
@@ -151,4 +152,105 @@ export function useNavigationCommands() {
       return failure("authentication", "Sign in to manage your workspace settings.");
     },
   }), [openAuthDialog, selectTask, setView, user]);
+}
+
+export function useConnectorCommands() {
+  const setLoading = useConnectorStore((state) => state.setLoading);
+  const setSaving = useConnectorStore((state) => state.setSaving);
+  const setConnectors = useConnectorStore((state) => state.setConnectors);
+  const upsertConnector = useConnectorStore((state) => state.upsertConnector);
+  const removeConnector = useConnectorStore((state) => state.removeConnector);
+  const setError = useConnectorStore((state) => state.setError);
+  const setPendingRevitPlan = useConnectorStore((state) => state.setPendingRevitPlan);
+
+  return useMemo(() => ({
+    refresh: async (): Promise<CommandResult> => {
+      if (!useSessionStore.getState().token) return failure("authentication", "Sign in to manage connectors.");
+      setLoading(true);
+      try {
+        setConnectors((await api.listConnectors()).connectors);
+        setError(null);
+        return { ok: true };
+      } catch (error) {
+        const message = describeApiError(error);
+        setError(message);
+        return failure("request", message);
+      } finally { setLoading(false); }
+    },
+    create: async (draft: ConnectorDraft): Promise<CommandResult> => {
+      if (!draft.display_name.trim()) return failure("validation", "Name the connector before saving it.");
+      if (draft.provider === "github" && !draft.credential) return failure("validation", "Add a GitHub token to configure this connector.");
+      setSaving(true);
+      try {
+        const connector = await api.createConnector({ ...draft, display_name: draft.display_name.trim() });
+        upsertConnector(connector);
+        toast.success(`${connector.display_name} added`);
+        return { ok: true };
+      } catch (error) {
+        const message = describeApiError(error); toast.error(message); return failure("request", message);
+      } finally { setSaving(false); }
+    },
+    test: async (connector: ConnectorRecord): Promise<CommandResult> => {
+      setSaving(true);
+      try {
+        const result = await api.testConnector(connector.id);
+        await (async () => { const latest = await api.listConnectors(); setConnectors(latest.connectors); })();
+        result.ok ? toast.success(result.message) : toast.error(result.message);
+        return result.ok ? { ok: true, message: result.message } : failure("request", result.message);
+      } catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); } finally { setSaving(false); }
+    },
+    runAction: async (connector: ConnectorRecord, action: string, input: Record<string, unknown>): Promise<CommandResult> => {
+      if (connector.provider !== "github") return failure("validation", "This action is only available for GitHub connectors.");
+      if (action === "create_issue" && (!String(input.owner || "").trim() || !String(input.repository || "").trim() || !String(input.title || "").trim())) return failure("validation", "Provide an owner, repository, and issue title.");
+      setSaving(true);
+      try {
+        const providerInput = action === "create_issue" ? { ...input, repo: String(input.repository) } : input;
+        const result = await api.runConnectorAction(connector.id, action, providerInput);
+        result.ok ? toast.success(result.message) : toast.error(result.message);
+        return result.ok ? { ok: true, message: result.message } : failure("request", result.message);
+      } catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); } finally { setSaving(false); }
+    },
+    setEnabled: async (connector: ConnectorRecord, enabled: boolean): Promise<CommandResult> => {
+      setSaving(true);
+      try {
+        const updated = await api.updateConnector(connector.id, { enabled });
+        upsertConnector(updated);
+        toast.success(`${connector.display_name} ${enabled ? "enabled" : "disabled"}`);
+        return { ok: true };
+      } catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); } finally { setSaving(false); }
+    },
+    move: async (connector: ConnectorRecord, sortOrder: number): Promise<CommandResult> => {
+      setSaving(true);
+      try {
+        const updated = await api.updateConnector(connector.id, { sort_order: sortOrder });
+        upsertConnector(updated);
+        await (async () => { const latest = await api.listConnectors(); setConnectors(latest.connectors); })();
+        return { ok: true };
+      } catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); } finally { setSaving(false); }
+    },
+    remove: async (connector: ConnectorRecord): Promise<CommandResult> => {
+      setSaving(true);
+      try { await api.deleteConnector(connector.id); removeConnector(connector.id); toast.success(`${connector.display_name} removed`); return { ok: true }; }
+      catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); }
+      finally { setSaving(false); }
+    },
+    planRevitParameter: async (connectorId: string, elementId: number, parameter: string, value: string): Promise<CommandResult & { plan?: RevitPlan }> => {
+      if (!Number.isInteger(elementId) || elementId <= 0 || !parameter.trim()) return failure("validation", "Provide a positive element ID and parameter name.");
+      setSaving(true);
+      try {
+        const plan = await api.planRevit(connectorId, { operation: "set_parameter", transaction_name: `Aurora Relay: set ${parameter.trim()}`, set_parameter: { element_id: elementId, parameter: parameter.trim(), value } });
+        setPendingRevitPlan(plan);
+        return { ok: true, plan };
+      } catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); } finally { setSaving(false); }
+    },
+    applyRevit: async (connectorId: string, plan: RevitPlan): Promise<CommandResult> => {
+      setSaving(true);
+      try {
+        const result = await api.applyRevit(connectorId, plan.operation_id);
+        setPendingRevitPlan(null);
+        result.state === "applied" ? toast.success(result.message) : toast.error(result.message);
+        return result.state === "applied" ? { ok: true } : failure("request", result.message);
+      } catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); } finally { setSaving(false); }
+    },
+  }), [removeConnector, setConnectors, setError, setLoading, setPendingRevitPlan, setSaving, upsertConnector]);
 }

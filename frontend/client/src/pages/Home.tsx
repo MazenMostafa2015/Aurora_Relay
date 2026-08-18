@@ -1,22 +1,25 @@
 // Aurora Relay style reminder: editorial command center, graphite surfaces, relay cyan, saffron for human attention.
 import { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/store/appStore";
+import { useConnectorStore } from "@/store/connectorStore";
 import { useSessionStore } from "@/store/sessionStore";
-import { useAuthCommands, useNavigationCommands, useTaskCommands } from "@/lib/commands";
+import { useAuthCommands, useConnectorCommands, useNavigationCommands, useTaskCommands } from "@/lib/commands";
 import { useTaskStream } from "@/hooks/useTaskStream";
-import type { Task, ViewKey } from "@/types/app";
+import type { ConnectorDraft, ConnectorRecord, Task, ViewKey } from "@/types/app";
 import { toast } from "sonner";
 import { ManusDialog } from "@/components/ManusDialog";
+import { ConnectorsView } from "@/components/ConnectorsView";
 import {
   Activity, ArrowUpRight, Check, ChevronDown, CircleHelp, Clock3, Command, FileText,
-  Gauge, Hexagon, LayoutDashboard, LogIn, LogOut, Menu, MoreHorizontal, Play, Plus,
-  Settings2, ShieldCheck, Sparkles, TerminalSquare, UserRound, Wifi, Wrench,
+  CirclePlus, Gauge, Github, Hexagon, LayoutDashboard, LogIn, LogOut, Menu, MoreHorizontal, Play, Plus,
+  Search, Settings2, ShieldCheck, Sparkles, TerminalSquare, UserRound, Wifi, Wrench, Boxes, RefreshCw, Trash2, Building2,
 } from "lucide-react";
 
 const navItems: { key: ViewKey; label: string; icon: typeof LayoutDashboard }[] = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
   { key: "tasks", label: "Task desk", icon: Activity },
   { key: "tools", label: "Tool explorer", icon: Wrench },
+  { key: "connectors", label: "Connectors", icon: Boxes },
   { key: "settings", label: "Settings", icon: Settings2 },
 ];
 
@@ -120,5 +123,5 @@ export default function Home() {
   const { hydrate, closeDialog, signIn, signUp } = useAuthCommands();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   useEffect(() => { void hydrate(); }, [hydrate]);
-  return <div className="app-shell"><button type="button" className="mobile-menu" onClick={() => setSidebarOpen((open) => !open)} aria-label="Toggle navigation"><Menu size={19} /></button><div className={sidebarOpen ? "sidebar-wrap open" : "sidebar-wrap"}><Sidebar /></div><main className="main-canvas">{view === "overview" && <Overview />}{view === "tasks" && <TasksView />}{view === "tools" && <ToolsView />}{view === "settings" && <SettingsView />}<footer className="app-footer"><span><Hexagon size={13} /> Aurora Relay / private workspace</span><span className="footer-right">build 0.8.20 <span className="footer-divider" /> <Wifi size={13} /> local-first</span></footer></main><ManusDialog open={authDialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} onLogin={async (username, password) => (await signIn(username, password)).ok} onRegister={async (username, email, password) => (await signUp(username, email, password)).ok} isSubmitting={authStatus === "authenticating"} error={authError} /></div>;
+  return <div className="app-shell"><button type="button" className="mobile-menu" onClick={() => setSidebarOpen((open) => !open)} aria-label="Toggle navigation"><Menu size={19} /></button><div className={sidebarOpen ? "sidebar-wrap open" : "sidebar-wrap"}><Sidebar /></div><main className="main-canvas">{view === "overview" && <Overview />}{view === "tasks" && <TasksView />}{view === "tools" && <ToolsView />}{view === "connectors" && <ConnectorsView header={<Header eyebrow="Integration control" title="Connectors" />} />}{view === "settings" && <SettingsView />}<footer className="app-footer"><span><Hexagon size={13} /> Aurora Relay / private workspace</span><span className="footer-right">build 0.8.21 <span className="footer-divider" /> <Wifi size={13} /> local-first</span></footer></main><ManusDialog open={authDialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} onLogin={async (username, password) => (await signIn(username, password)).ok} onRegister={async (username, email, password) => (await signUp(username, email, password)).ok} isSubmitting={authStatus === "authenticating"} error={authError} /></div>;
 }

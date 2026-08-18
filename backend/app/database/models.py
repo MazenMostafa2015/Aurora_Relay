@@ -28,6 +28,8 @@ class User(Base):
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     tasks: Mapped[list["Task"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    connectors: Mapped[list["Connector"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    connector_credentials: Mapped[list["ConnectorCredential"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Task(Base):
@@ -98,3 +100,57 @@ class AuditLog(Base):
     ip_address: Mapped[str | None] = mapped_column(String(45))
     user_agent: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class ConnectorCredential(Base):
+    """Encrypted secret material. Ciphertext must never cross the API boundary."""
+
+    __tablename__ = "connector_credentials"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    provider: Mapped[str] = mapped_column(String(32), index=True)
+    label: Mapped[str] = mapped_column(String(120))
+    ciphertext: Mapped[str] = mapped_column(Text)
+    key_version: Mapped[str] = mapped_column(String(32), default="fernet-v1")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
+    user: Mapped[User] = relationship(back_populates="connector_credentials")
+    connectors: Mapped[list["Connector"]] = relationship(back_populates="credential")
+
+
+class Connector(Base):
+    __tablename__ = "connectors"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    provider: Mapped[str] = mapped_column(String(32), index=True)
+    display_name: Mapped[str] = mapped_column(String(120))
+    status: Mapped[str] = mapped_column(String(32), default="not_configured", index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    configuration: Mapped[dict] = mapped_column(JSON, default=dict)
+    credential_id: Mapped[str | None] = mapped_column(ForeignKey("connector_credentials.id", ondelete="SET NULL"), nullable=True)
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
+    user: Mapped[User] = relationship(back_populates="connectors")
+    credential: Mapped[ConnectorCredential | None] = relationship(back_populates="connectors")
+    operations: Mapped[list["ConnectorOperation"]] = relationship(back_populates="connector", cascade="all, delete-orphan")
+
+
+class ConnectorOperation(Base):
+    __tablename__ = "connector_operations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    connector_id: Mapped[str] = mapped_column(ForeignKey("connectors.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    provider: Mapped[str] = mapped_column(String(32), index=True)
+    operation_type: Mapped[str] = mapped_column(String(64), index=True)
+    state: Mapped[str] = mapped_column(String(32), default="planned", index=True)
+    request_hash: Mapped[str] = mapped_column(String(64))
+    request_payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    preview: Mapped[dict] = mapped_column(JSON, default=dict)
+    result: Mapped[dict | None] = mapped_column(JSON)
+    error: Mapped[str | None] = mapped_column(String(500))
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    connector: Mapped[Connector] = relationship(back_populates="operations")

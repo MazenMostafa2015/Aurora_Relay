@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     rate_limit_window: int = Field(default=60, ge=1, le=3600)
     admin_user_ids: list[str] = Field(default_factory=list)
 
+    # Generated per-install connector-vault material is stored outside the
+    # repository. The launcher may override this path for portable installs.
+    connector_vault_path: str | None = Field(default=None, repr=False)
+    allow_insecure_local_connectors: bool = False
+    revit_live_bridge_enabled: bool = False
+
     # Runtime config is placed into os.environ by the launcher. Do not search
     # the current working directory for a user-supplied .env file.
     model_config = SettingsConfigDict(case_sensitive=False, extra="ignore")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -149,3 +149,140 @@ class AdminStatsResponse(BaseModel):
     tasks: int
     active_sessions: int
     audit_events: int
+
+
+class ConnectorProvider(str, Enum):
+    GITHUB = "github"
+    REVIT = "revit"
+
+
+class ConnectorStatus(str, Enum):
+    NOT_CONFIGURED = "not_configured"
+    TESTING = "testing"
+    CONNECTED = "connected"
+    NEEDS_ATTENTION = "needs_attention"
+    DISABLED = "disabled"
+
+
+def _safe_connector_configuration(value: dict[str, Any]) -> dict[str, Any]:
+    blocked = {"token", "secret", "password", "authorization", "api_key", "credential"}
+    for key in value:
+        if key.lower().replace("-", "_") in blocked:
+            raise ValueError("Connector credentials must be provided through the credential field, not configuration")
+    return value
+
+
+class ConnectorCreate(BaseModel):
+    provider: ConnectorProvider
+    display_name: str = Field(min_length=2, max_length=120)
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    credential: str | None = Field(default=None, min_length=8, max_length=4096, repr=False)
+    credential_label: str = Field(default="Primary credential", min_length=2, max_length=120)
+
+    @field_validator("configuration")
+    @classmethod
+    def validate_configuration(cls, value: dict[str, Any]) -> dict[str, Any]:
+        return _safe_connector_configuration(value)
+
+
+class ConnectorUpdate(BaseModel):
+    display_name: str | None = Field(default=None, min_length=2, max_length=120)
+    configuration: dict[str, Any] | None = None
+    credential: str | None = Field(default=None, min_length=8, max_length=4096, repr=False)
+    credential_label: str | None = Field(default=None, min_length=2, max_length=120)
+    enabled: bool | None = None
+    sort_order: int | None = Field(default=None, ge=1, le=10_000)
+
+    @field_validator("configuration")
+    @classmethod
+    def validate_configuration(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _safe_connector_configuration(value) if value is not None else value
+
+
+class ConnectorResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    provider: ConnectorProvider
+    display_name: str
+    status: ConnectorStatus
+    sort_order: int
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    credential_configured: bool = False
+    capabilities: list[str] = Field(default_factory=list)
+    last_tested_at: datetime | None = None
+    last_error: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
+class ConnectorListResponse(BaseModel):
+    connectors: list[ConnectorResponse]
+    count: int
+
+
+class ConnectorActionRequest(BaseModel):
+    action: str = Field(min_length=3, max_length=64, pattern=r"^[a-z_]+$")
+    input: dict[str, Any] = Field(default_factory=dict)
+
+
+class ConnectorActionResponse(BaseModel):
+    ok: bool
+    provider: ConnectorProvider
+    action: str
+    message: str
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class RevitSetParameterInput(BaseModel):
+    element_id: int = Field(gt=0)
+    parameter: str = Field(min_length=1, max_length=120)
+    value: str | int | float | bool
+
+
+class RevitPlaceFamilyInput(BaseModel):
+    family_symbol: str = Field(min_length=1, max_length=180)
+    level: str = Field(min_length=1, max_length=120)
+    x: float = Field(ge=-1_000_000, le=1_000_000)
+    y: float = Field(ge=-1_000_000, le=1_000_000)
+    z: float = Field(default=0, ge=-1_000_000, le=1_000_000)
+    parameters: dict[str, str | int | float | bool] = Field(default_factory=dict)
+
+
+class RevitPlanRequest(BaseModel):
+    operation: Literal["set_parameter", "place_family_instance"]
+    transaction_name: str = Field(min_length=3, max_length=120)
+    set_parameter: RevitSetParameterInput | None = None
+    place_family_instance: RevitPlaceFamilyInput | None = None
+
+    @field_validator("set_parameter")
+    @classmethod
+    def validate_set_parameter(cls, value: RevitSetParameterInput | None, info: Any) -> RevitSetParameterInput | None:
+        if info.data.get("operation") == "set_parameter" and value is None:
+            raise ValueError("set_parameter payload is required for a set_parameter operation")
+        return value
+
+    @field_validator("place_family_instance")
+    @classmethod
+    def validate_place_family_instance(cls, value: RevitPlaceFamilyInput | None, info: Any) -> RevitPlaceFamilyInput | None:
+        if info.data.get("operation") == "place_family_instance" and value is None:
+            raise ValueError("place_family_instance payload is required for a place_family_instance operation")
+        return value
+
+
+class RevitPlanResponse(BaseModel):
+    operation_id: str
+    state: Literal["planned"]
+    requires_confirmation: bool = True
+    preview: dict[str, Any]
+    message: str
+
+
+class RevitApplyRequest(BaseModel):
+    confirmation: Literal["APPLY"]
+
+
+class RevitOperationResponse(BaseModel):
+    operation_id: str
+    state: Literal["applied", "failed", "rejected"]
+    message: str
+    result: dict[str, Any] = Field(default_factory=dict)

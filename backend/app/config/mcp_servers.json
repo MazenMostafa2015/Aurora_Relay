@@ -22,6 +22,17 @@
       "timeout": 30,
       "maxRetries": 2,
       "retryBaseDelay": 0.25
+    },
+    "connector_management": {
+      "command": "python3",
+      "args": ["-m", "backend.app.core.mcp_servers.connector_management.server"],
+      "env": {
+        "PYTHONPATH": "."
+      },
+      "allowedTools": ["list_available_connectors", "test_connector", "github_connector_action", "revit_plan_change", "revit_apply_confirmed_change"],
+      "timeout": 30,
+      "maxRetries": 1,
+      "retryBaseDelay": 0.25
     }
   }
 }

@@ -1,5 +1,5 @@
 // Aurora Relay style reminder: network boundaries should be quiet, typed, and explicit about failure.
-import type { Tool, User } from "@/types/app";
+import type { ConnectorActionResult, ConnectorDraft, ConnectorRecord, RevitOperationResult, RevitPlan, Tool, User } from "@/types/app";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
@@ -47,4 +47,12 @@ export const api = {
   },
   async listTasks() { return request<{ tasks: Record<string, unknown>[] }>("/tasks"); },
   async listTools() { return request<{ tools: Tool[] }>("/tools"); },
+  async listConnectors() { return request<{ connectors: ConnectorRecord[]; count: number }>("/connectors"); },
+  async createConnector(draft: ConnectorDraft) { return request<ConnectorRecord>("/connectors", { method: "POST", body: JSON.stringify(draft) }); },
+  async updateConnector(connectorId: string, update: Partial<ConnectorDraft> & { enabled?: boolean; sort_order?: number }) { return request<ConnectorRecord>(`/connectors/${connectorId}`, { method: "PATCH", body: JSON.stringify(update) }); },
+  async deleteConnector(connectorId: string) { return request<void>(`/connectors/${connectorId}`, { method: "DELETE" }); },
+  async testConnector(connectorId: string) { return request<ConnectorActionResult>(`/connectors/${connectorId}/test`, { method: "POST" }); },
+  async runConnectorAction(connectorId: string, action: string, input: Record<string, unknown>) { return request<ConnectorActionResult>(`/connectors/${connectorId}/actions`, { method: "POST", body: JSON.stringify({ action, input }) }); },
+  async planRevit(connectorId: string, payload: Record<string, unknown>) { return request<RevitPlan>(`/connectors/${connectorId}/revit/plan`, { method: "POST", body: JSON.stringify(payload) }); },
+  async applyRevit(connectorId: string, operationId: string) { return request<RevitOperationResult>(`/connectors/${connectorId}/revit/operations/${operationId}/apply`, { method: "POST", body: JSON.stringify({ confirmation: "APPLY" }) }); },
 };

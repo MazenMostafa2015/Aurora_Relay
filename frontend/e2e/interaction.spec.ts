@@ -10,6 +10,10 @@ const user = {
 async function mockLocalApi(page: Page) {
   let authenticated = false;
   let lastAuthorization = "";
+  const connectors = [
+    { id: "github-local", provider: "github", display_name: "Engineering GitHub", status: "connected", sort_order: 1, configuration: {}, credential_configured: true, capabilities: ["repository.read", "issue.write"], last_tested_at: "2026-08-18T08:30:00Z", last_error: null, created_at: "2026-08-18T08:00:00Z", updated_at: "2026-08-18T08:30:00Z" },
+    { id: "revit-local", provider: "revit", display_name: "Local Revit mock", status: "connected", sort_order: 2, configuration: { mode: "mock" }, credential_configured: false, capabilities: ["model.read", "parameter.write", "transaction.preview", "transaction.apply"], last_tested_at: "2026-08-18T08:30:00Z", last_error: null, created_at: "2026-08-18T08:00:00Z", updated_at: "2026-08-18T08:30:00Z" },
+  ];
 
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
@@ -44,6 +48,21 @@ async function mockLocalApi(page: Page) {
         steps: [{ id: "step-1", task_id: "task-live-001", description: "Frame the request", status: "executing" }],
         created_at: "2026-08-18T08:30:00Z", context: {}, estimated_complexity: "moderate",
       } });
+      return;
+    }
+    if (path.endsWith("/connectors") && request.method() === "GET") {
+      await route.fulfill({ json: { connectors, count: connectors.length } });
+      return;
+    }
+    if (path.endsWith("/revit/plan") && request.method() === "POST") {
+      await route.fulfill({ json: { operation_id: "revit-plan-001", state: "planned", requires_confirmation: true, preview: { transaction: "Aurora Relay: set Comments", mode: "mock", operation: "set_parameter", element: { id: 101, name: "Exterior wall" }, parameter: "Comments", before: "", after: "Reviewed by Aurora Relay" }, message: "Review the model preview, then confirm with APPLY to execute this transaction." } });
+      return;
+    }
+    if (path.endsWith("/revit/operations/revit-plan-001/apply") && request.method() === "POST") {
+      const body = request.postDataJSON() as { confirmation: string };
+      await route.fulfill(body.confirmation === "APPLY"
+        ? { json: { operation_id: "revit-plan-001", state: "applied", message: "Parameter updated in the mock model", result: { mode: "mock" } } }
+        : { status: 400, json: { detail: "Revit changes require the explicit APPLY confirmation" } });
       return;
     }
     await route.fulfill({ json: { tools: [], tasks: [] } });
@@ -123,6 +142,25 @@ test("sign-in dialog supports local account creation", async ({ page }) => {
   await dialog.getByLabel("Password").fill("safe-local-password");
   await dialog.getByRole("button", { name: "Create account" }).last().click();
   await expect(page.getByRole("heading", { name: "Welcome back, test.operator." })).toBeVisible();
+});
+
+test("connectors expose configured status and require a preview plus APPLY confirmation for Revit changes", async ({ page }) => {
+  await mockLocalApi(page);
+  await page.goto("/");
+  await signIn(page);
+
+  await page.getByRole("button", { name: "Connectors", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Connectors" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Engineering GitHub" })).toBeVisible();
+  await page.getByRole("button", { name: /Local Revit mock/ }).click();
+  await page.getByRole("button", { name: /Preview change/ }).click();
+  await expect(page.getByText("Planned transaction")).toBeVisible();
+  const apply = page.getByRole("button", { name: "Apply planned change" });
+  await expect(apply).toBeDisabled();
+  await page.getByPlaceholder("APPLY").fill("APPLY");
+  await expect(apply).toBeEnabled();
+  await apply.click();
+  await expect(page.getByText("Parameter updated in the mock model")).toBeVisible();
 });
 
 test("secondary workspace controls provide visible actions across the dashboard", async ({ page }) => {

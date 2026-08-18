@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Aurora Relay Revit Bridge</Name>
+    <Assembly>AuroraRelay.RevitBridge.dll</Assembly>
+    <AddInId>96B714A8-0CC2-4F68-A980-6B611E9B8C20</AddInId>
+    <FullClassName>AuroraRelay.RevitBridge.App</FullClassName>
+    <VendorId>AURR</VendorId>
+    <VendorDescription>Aurora Relay local connector bridge</VendorDescription>
+  </AddIn>
+</RevitAddIns>
