@@ -168,7 +168,11 @@ jobs:
       - name: Generate checksums
         shell: pwsh
         run: |
-          Get-ChildItem desktop/release -File | Where-Object { $_.Name -notmatch 'SHA256SUMS|\.blockmap$' } |
+          $installers = @(Get-ChildItem desktop/release -Filter '*.exe' -File)
+          if ($installers.Count -eq 0) {
+            throw 'No Windows installer executables were available for checksums.'
+          }
+          $installers |
             Get-FileHash -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path | Split-Path -Leaf)" } |
             Set-Content -Encoding ascii desktop/release/SHA256SUMS
@@ -213,6 +217,34 @@ jobs:
         with:
           subject-path: desktop/release/*.exe
 
+      - name: Verify installer on clean Windows runner
+        shell: pwsh
+        env:
+          AURORA_INTERNAL_SIGNING_CERT_SHA1: ${{ vars.AURORA_INTERNAL_SIGNING_CERT_SHA1 }}
+        run: |
+          $installers = @(Get-ChildItem desktop/release -Filter '*.exe' -File)
+          if ($installers.Count -ne 1) {
+            throw "Expected exactly one Windows installer for clean-machine verification, found $($installers.Count)."
+          }
+          $expectedHash = ((Get-Content desktop/release/SHA256SUMS | Where-Object { $_ -match '\.exe$' } | Select-Object -First 1) -split '\s+')[0]
+          if ([string]::IsNullOrWhiteSpace($expectedHash)) {
+            throw 'The installer SHA-256 entry was not found in SHA256SUMS.'
+          }
+          ./desktop/scripts/verify-windows-clean-machine.ps1 `
+            -InstallerPath $installers[0].FullName `
+            -ExpectedSha256 $expectedHash `
+            -ExpectedSignerThumbprint $env:AURORA_INTERNAL_SIGNING_CERT_SHA1 `
+            -EvidencePath desktop/release/clean-machine-evidence.json
+
+      - name: Upload clean-machine evidence on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurora-relay-clean-machine-evidence-${{ github.sha }}
+          path: desktop/release/clean-machine-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload signed artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -222,6 +254,7 @@ jobs:
             desktop/release/*.blockmap
             desktop/release/SHA256SUMS
             desktop/release/provenance.json
+            desktop/release/clean-machine-evidence.json
           if-no-files-found: error
           retention-days: 14
 
@@ -232,7 +265,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { "build-$env:GITHUB_RUN_NUMBER" }
-          $releaseArgs = @($tag, 'desktop/release/*.exe', 'desktop/release/SHA256SUMS', 'desktop/release/provenance.json', '--generate-notes')
+          $releaseArgs = @($tag, 'desktop/release/*.exe', 'desktop/release/SHA256SUMS', 'desktop/release/provenance.json', 'desktop/release/clean-machine-evidence.json', '--generate-notes')
           if ($env:GITHUB_REF -like 'refs/tags/*') {
             $releaseArgs += '--verify-tag'
           }

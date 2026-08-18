@@ -13,8 +13,9 @@ The workflow is defined in `.github/workflows/release-windows.yml`. It runs on v
 | Validate | Ubuntu | Compile and test the backend, install frontend dependencies, run type/build validation | Must pass before Windows work starts |
 | Build | Windows | Build the frontend, freeze the backend, install Electron dependencies, create NSIS x64/arm64 artifacts | Must produce installer executables |
 | Sign | Windows | Sign every `.exe` with SHA-256 and a trusted timestamp; internally self-signed builds also pin the signer thumbprint and validate its chain in bounded in-memory custom trust | Any signature, signer-identity, or bounded chain-validation failure stops release |
-| Integrity | Windows | Create `SHA256SUMS` and preserve blockmaps | Hash file must match published artifacts |
+| Integrity | Windows | Create `SHA256SUMS` for each release installer and preserve blockmaps | Hash file must match published installers |
 | Provenance | Windows/GitHub Actions | Emit `provenance.json` binding installer hashes to the immutable revision and workflow run, then attempt GitHub artifact attestation | Manifest is mandatory; GitHub attestation remains an additional capability where supported |
+| Clean-machine smoke | Fresh Windows hosted runner | Re-check signer identity and hash, silently install the signed NSIS installer, require a healthy `127.0.0.1` or `::1` backend, silently uninstall, and confirm per-user state remains | `clean-machine-evidence.json` must report `passed` before artifact upload or release publication |
 | Publish | Windows | Upload artifacts and create a GitHub Release on a version tag or approved manual run | Requires protected `release` environment |
 
 GitHub describes artifact attestations as cryptographically signed provenance claims connecting an artifact to its workflow, repository, environment, commit, and trigger. Consumers should verify those attestations rather than treating their existence as sufficient on its own. [1]
@@ -55,7 +56,7 @@ The produced files are written to `desktop/release`. The build contains the comp
 
 ## Signing policy
 
-Sign the Aurora Relay NSIS installer and any signed native bootstrapper executable after packaging and before checksums or publication. Use SHA-256 file digests, SHA-256 signatures, and a trusted RFC 3161 timestamp. Publicly trusted certificates are verified with `signtool verify /pa /all`. In controlled internal self-signed mode, the workflow instead rejects a signer-thumbprint mismatch, rejects Authenticode integrity statuses other than `Valid`, `NotTrusted`, or the platform’s trust-only `UnknownError`, and builds a bounded in-memory custom-root chain for the expected signer. A failed or missing signature must prevent release publication; unsigned installers should be available only as internal CI artifacts, never as public release assets.
+Sign the Aurora Relay NSIS installer and any signed native bootstrapper executable after packaging and before checksums or publication. Use SHA-256 file digests, SHA-256 signatures, and a trusted RFC 3161 timestamp. Publicly trusted certificates are verified with `signtool verify /pa /all`. In controlled internal self-signed mode, the workflow instead rejects a signer-thumbprint mismatch, rejects Authenticode integrity statuses other than `Valid`, `NotTrusted`, or the platform’s trust-only `UnknownError`, and builds a bounded in-memory custom-root chain for the expected signer. The subsequent clean-runner gate repeats the signer and SHA-256 checks without mutating a certificate store, then tests silent install, loopback-only backend health, uninstall, and retained state. A failed or missing signature or clean-machine evidence must prevent release publication; unsigned installers should be available only as internal CI artifacts, never as public release assets.
 
 The prerequisite bootstrapper is a separate trust boundary. If a native `Aurora-Relay-Setup.exe` wrapper is introduced, sign it with the same release policy and have it display the selected third-party packages, license links, privilege requirements, and restart implications before installation. It may invoke official Ollama and Docker installation channels only with explicit user or administrator consent. It must never silently install third-party software or make Docker’s daemon available over an unauthenticated TCP socket.
 
@@ -75,7 +76,7 @@ Get-FileHash .\Aurora-Relay-0.8.0-win-x64.exe -Algorithm SHA256
 Get-Content .\SHA256SUMS
 ```
 
-A release auditor must first compare the downloaded installer hash against both `SHA256SUMS` and the matching entry in `provenance.json`. The manifest identifies the repository, immutable Git revision, workflow run URL, generation time, and installer hashes. It is a deterministic release record, not a substitute for a cryptographically signed GitHub attestation.
+A release auditor must first compare the downloaded installer hash against both `SHA256SUMS` and the matching entry in `provenance.json`. The manifest identifies the repository, immutable Git revision, workflow run URL, generation time, and installer hashes. The accompanying `clean-machine-evidence.json` records the non-secret test outcomes for signer identity, hash, silent install, loopback health, uninstall, and retained per-user state. The manifest and clean-machine evidence are deterministic release records, not substitutes for a cryptographically signed GitHub attestation.
 
 Where the workflow summary confirms GitHub attestation support, a consumer or release auditor can additionally verify GitHub provenance with the GitHub CLI after downloading the artifact:
 
