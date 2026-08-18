@@ -27,6 +27,8 @@ $installDirectory = Join-Path $env:LOCALAPPDATA 'Programs\Aurora Relay'
 $applicationPath = Join-Path $installDirectory 'Aurora Relay.exe'
 $uninstallerPath = Join-Path $installDirectory 'Uninstall Aurora Relay.exe'
 $userDataPath = Join-Path $env:APPDATA 'Aurora Relay'
+$backendStartupLogPath = Join-Path $userDataPath 'logs\backend-startup.log'
+$diagnosticLogPath = Join-Path (Split-Path -Parent $EvidencePath) 'clean-machine-backend.log'
 $installer = Get-Item -LiteralPath $InstallerPath
 $launchedApplication = $null
 $installationStarted = $false
@@ -54,6 +56,7 @@ $evidence = [ordered]@{
         loopback_address = $null
         loopback_port = $null
         health_status_code = $null
+        backend_startup_log_captured = $false
     }
     uninstall = [ordered]@{
         exit_code = $null
@@ -199,6 +202,15 @@ catch {
 }
 finally {
     Stop-AuroraRelayProcesses
+    if ($evidence.status -eq 'failed' -and (Test-Path -LiteralPath $backendStartupLogPath -PathType Leaf)) {
+        try {
+            Copy-Item -LiteralPath $backendStartupLogPath -Destination $diagnosticLogPath -Force
+            $evidence.runtime.backend_startup_log_captured = $true
+        }
+        catch {
+            # Preserve the primary verification error even if diagnostic export is unavailable.
+        }
+    }
     if ($installationStarted -and -not $uninstallCompleted -and (Test-Path -LiteralPath $uninstallerPath -PathType Leaf)) {
         try {
             Start-Process -FilePath $uninstallerPath -ArgumentList '/S' -Wait | Out-Null

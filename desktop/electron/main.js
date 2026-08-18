@@ -15,6 +15,17 @@ let backendPort;
 let updater;
 let isQuitting = false;
 
+function appendBackendStartupLog(stream, data) {
+  try {
+    const logDirectory = path.join(app.getPath("userData"), "logs");
+    fs.mkdirSync(logDirectory, { recursive: true });
+    const message = Buffer.isBuffer(data) ? data.toString("utf8") : String(data);
+    fs.appendFileSync(path.join(logDirectory, "backend-startup.log"), `[${new Date().toISOString()}] ${stream}: ${message}`);
+  } catch {
+    // Startup diagnostics must never block the local backend lifecycle.
+  }
+}
+
 function backendExecutable() {
   if (!app.isPackaged) return process.env.AURORA_PYTHON || "python3";
   const binary = process.platform === "win32" ? "aurora-backend.exe" : "aurora-backend";
@@ -53,13 +64,21 @@ function spawnBackend() {
     windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],
   });
-  backendProcess.stdout?.on("data", (data) => console.log(`[backend] ${data}`.toString().trimEnd()));
-  backendProcess.stderr?.on("data", (data) => console.error(`[backend] ${data}`.toString().trimEnd()));
+  backendProcess.stdout?.on("data", (data) => {
+    appendBackendStartupLog("stdout", data);
+    console.log(`[backend] ${data}`.toString().trimEnd());
+  });
+  backendProcess.stderr?.on("data", (data) => {
+    appendBackendStartupLog("stderr", data);
+    console.error(`[backend] ${data}`.toString().trimEnd());
+  });
   backendProcess.once("error", (error) => {
+    appendBackendStartupLog("spawn-error", `${error.name}: ${error.message}\n`);
     console.error("Backend process error", error);
     dialog.showErrorBox("Aurora Relay backend unavailable", `The local service could not start: ${error.message}`);
   });
   backendProcess.once("exit", (code, signal) => {
+    appendBackendStartupLog("exit", `code=${code ?? "none"} signal=${signal ?? "none"}\n`);
     console.log(`Backend exited code=${code ?? "none"} signal=${signal ?? "none"}`);
     backendProcess = undefined;
   });
