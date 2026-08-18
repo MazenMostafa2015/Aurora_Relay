@@ -33,6 +33,9 @@ rm -rf desktop/frontend-dist/__manus__
 if find desktop/frontend-dist -type f \( -iname '*debug-collector*' -o -path '*/__manus__/*' \) -print -quit | grep -q .; then
   fail "Development diagnostics remain in the desktop frontend bundle"
 fi
+if grep -R --binary-files=without-match -E 'VITE_ANALYTICS_ENDPOINT|VITE_ANALYTICS_WEBSITE_ID|/umami' desktop/frontend-dist >/dev/null; then
+  fail "Analytics placeholders or Umami script references remain in the desktop frontend bundle"
+fi
 
 log "Preparing backend runtime environment"
 if ! "$PYTHON" -c 'import PyInstaller' >/dev/null 2>&1; then
