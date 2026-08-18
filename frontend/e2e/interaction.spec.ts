@@ -64,6 +64,20 @@ async function signIn(page: Page) {
   await expect(page.getByRole("heading", { name: "Welcome back, test.operator." })).toBeVisible();
 }
 
+test("renderer startup keeps network requests on the local origin", async ({ page }) => {
+  const externalRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if ((url.protocol === "http:" || url.protocol === "https:") && !["127.0.0.1", "localhost"].includes(url.hostname)) {
+      externalRequests.push(request.url());
+    }
+  });
+  await mockLocalApi(page);
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Sign in" }).first()).toBeVisible();
+  expect(externalRequests).toEqual([]);
+});
+
 test("authentication controls sign in, persist the local session, and sign out", async ({ page }) => {
   const api = await mockLocalApi(page);
   await page.goto("/");

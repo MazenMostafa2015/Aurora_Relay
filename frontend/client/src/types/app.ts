@@ -44,11 +44,27 @@ export interface Tool {
   schema?: Record<string, unknown>;
 }
 
-export interface WorkspaceState {
+export type SessionStatus = "anonymous" | "authenticating" | "authenticated" | "error";
+
+export type SessionOperationResult =
+  | { ok: true; message?: string }
+  | { ok: false; message: string };
+
+export interface SessionState {
   user: User | null;
   token: string | null;
+  status: SessionStatus;
   authDialogOpen: boolean;
   authError: string | null;
+  initializeSession: () => Promise<SessionOperationResult>;
+  openAuthDialog: (reason?: string) => void;
+  closeAuthDialog: () => void;
+  login: (username: string, password: string) => Promise<SessionOperationResult>;
+  register: (username: string, email: string, password: string) => Promise<SessionOperationResult>;
+  logout: () => Promise<SessionOperationResult>;
+}
+
+export interface WorkspaceState {
   view: ViewKey;
   draft: string;
   tasks: Task[];
@@ -56,17 +72,13 @@ export interface WorkspaceState {
   events: ActivityEvent[];
   tools: Tool[];
   isConnected: boolean;
-  isLoading: boolean;
+  isTaskSubmitting: boolean;
   setView: (view: ViewKey) => void;
   setDraft: (draft: string) => void;
-  submitTask: (context?: Record<string, unknown>) => Promise<boolean>;
   selectTask: (id: string) => void;
   setConnected: (connected: boolean) => void;
   addEvent: (event: ActivityEvent) => void;
-  initializeSession: () => Promise<void>;
-  openAuthDialog: () => void;
-  closeAuthDialog: () => void;
-  login: (username: string, password: string) => Promise<boolean>;
-  register: (username: string, email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  setTaskSubmitting: (isSubmitting: boolean) => void;
+  acceptSubmittedTask: (task: Task) => void;
+  recordTaskSubmissionFailure: (message: string) => void;
 }

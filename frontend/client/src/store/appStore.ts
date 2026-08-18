@@ -1,55 +1,5 @@
-// Aurora Relay style reminder: state should expose progress, uncertainty, and the next action clearly.
 import { create } from "zustand";
-import { api, ApiError } from "@/lib/api";
 import type { ActivityEvent, Task, Tool, ViewKey, WorkspaceState } from "@/types/app";
-
-const TOKEN_STORAGE_KEY = "aurora-token";
-
-function storedToken(): string | null {
-  return typeof window === "undefined" ? null : window.localStorage.getItem(TOKEN_STORAGE_KEY);
-}
-
-function clearStoredToken() {
-  if (typeof window !== "undefined") window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-}
-
-function saveToken(token: string) {
-  if (typeof window !== "undefined") window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
-}
-
-function readableError(error: unknown) {
-  if (error instanceof ApiError && error.status === 401) return "The username or password was not accepted.";
-  if (error instanceof Error) return error.message;
-  return "The local service could not complete that request.";
-}
-
-function mapApiTask(value: Record<string, unknown>): Task {
-  const rawStatus = String(value.status || "waiting");
-  const status: Task["status"] = rawStatus === "executing" || rawStatus === "completed" || rawStatus === "failed" || rawStatus === "paused"
-    ? rawStatus
-    : "waiting";
-  const rawSteps = Array.isArray(value.steps) ? value.steps : [];
-  return {
-    id: String(value.id),
-    title: String(value.order || "Untitled task"),
-    status,
-    progress: Math.max(0, Math.min(100, Math.round(Number(value.progress || 0) * (Number(value.progress || 0) <= 1 ? 100 : 1)))),
-    createdAt: value.created_at ? new Date(String(value.created_at)).toLocaleString() : "Just now",
-    duration: "Just now",
-    summary: typeof value.summary === "string" ? value.summary : "The local coordinator is preparing this task.",
-    tags: ["local API"],
-    steps: rawSteps.map((step, index) => {
-      const item = step && typeof step === "object" ? step as Record<string, unknown> : {};
-      const stepStatus = String(item.status || "pending");
-      return {
-        id: String(item.id || `step-${index}`),
-        label: String(item.description || `Step ${index + 1}`),
-        status: stepStatus === "completed" ? "done" : stepStatus === "executing" ? "active" : stepStatus === "waiting_approval" ? "waiting" : "queued",
-        detail: typeof item.error === "string" ? item.error : "Awaiting local execution.",
-      };
-    }),
-  };
-}
 
 const seededTasks: Task[] = [
   {
@@ -106,11 +56,7 @@ const seededTools: Tool[] = [
   { name: "code_executor.python", description: "Run Python inside the isolated execution sandbox.", server: "Code Executor" },
 ];
 
-export const useAppStore = create<WorkspaceState>((set, get) => ({
-  user: null,
-  token: storedToken(),
-  authDialogOpen: false,
-  authError: null,
+export const useAppStore = create<WorkspaceState>((set) => ({
   view: "overview",
   draft: "",
   tasks: seededTasks,
@@ -118,91 +64,21 @@ export const useAppStore = create<WorkspaceState>((set, get) => ({
   events: seededEvents,
   tools: seededTools,
   isConnected: false,
-  isLoading: false,
+  isTaskSubmitting: false,
   setView: (view: ViewKey) => set({ view }),
   setDraft: (draft: string) => set({ draft }),
-  submitTask: async (context = {}) => {
-    const draft = get().draft.trim();
-    if (!draft) return false;
-    if (!get().token) {
-      set({ authDialogOpen: true, authError: "Sign in to submit a task to the local coordinator." });
-      return false;
-    }
-    set({ isLoading: true });
-    try {
-      const created = mapApiTask(await api.createTask(draft, context));
-      set((state) => ({
-        draft: "",
-        view: "tasks",
-        activeTaskId: created.id,
-        tasks: [created, ...state.tasks.filter((task) => task.id !== created.id)],
-        events: [{ id: `e-${Date.now()}`, time: "now", label: "Task submitted", detail: "The local coordinator accepted the task.", kind: "signal" }, ...state.events],
-      }));
-      return true;
-    } catch (error) {
-      set((state) => ({ events: [{ id: `e-${Date.now()}`, time: "now", label: "Task submission failed", detail: readableError(error), kind: "approval" }, ...state.events] }));
-      return false;
-    } finally {
-      set({ isLoading: false });
-    }
-  },
   selectTask: (id: string) => set({ activeTaskId: id, view: "tasks" }),
   setConnected: (isConnected: boolean) => set({ isConnected }),
   addEvent: (event: ActivityEvent) => set((state) => ({ events: [event, ...state.events].slice(0, 12) })),
-  initializeSession: async () => {
-    if (!get().token) return;
-    set({ isLoading: true });
-    try {
-      set({ user: await api.me(), authError: null });
-    } catch {
-      clearStoredToken();
-      set({ user: null, token: null });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-  openAuthDialog: () => set({ authDialogOpen: true, authError: null }),
-  closeAuthDialog: () => set({ authDialogOpen: false, authError: null }),
-  login: async (username, password) => {
-    set({ isLoading: true, authError: null });
-    try {
-      const session = await api.login(username, password);
-      saveToken(session.access_token);
-      const user = await api.me();
-      set({ token: session.access_token, user, authDialogOpen: false, authError: null });
-      return true;
-    } catch (error) {
-      set({ authError: readableError(error) });
-      return false;
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-  register: async (username, email, password) => {
-    set({ isLoading: true, authError: null });
-    try {
-      await api.register(username, email, password);
-      const session = await api.login(username, password);
-      saveToken(session.access_token);
-      const user = await api.me();
-      set({ token: session.access_token, user, authDialogOpen: false, authError: null });
-      return true;
-    } catch (error) {
-      set({ authError: readableError(error) });
-      return false;
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-  logout: async () => {
-    const token = get().token;
-    clearStoredToken();
-    set({ user: null, token: null, view: "overview", authError: null });
-    if (!token) return;
-    try {
-      await api.logout();
-    } catch (error) {
-      get().addEvent({ id: `e-${Date.now()}`, time: "now", label: "Remote logout could not be confirmed", detail: readableError(error), kind: "approval" });
-    }
-  },
+  setTaskSubmitting: (isTaskSubmitting: boolean) => set({ isTaskSubmitting }),
+  acceptSubmittedTask: (task: Task) => set((state) => ({
+    draft: "",
+    view: "tasks",
+    activeTaskId: task.id,
+    tasks: [task, ...state.tasks.filter((existing) => existing.id !== task.id)],
+    events: [{ id: `e-${Date.now()}`, time: "now", label: "Task submitted", detail: "The local coordinator accepted the task.", kind: "signal" as const }, ...state.events].slice(0, 12),
+  })),
+  recordTaskSubmissionFailure: (message: string) => set((state) => ({
+    events: [{ id: `e-${Date.now()}`, time: "now", label: "Task submission failed", detail: message, kind: "approval" as const }, ...state.events].slice(0, 12),
+  })),
 }));

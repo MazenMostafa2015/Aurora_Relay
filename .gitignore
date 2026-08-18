@@ -1,0 +1,12 @@
+# Generated Python artifacts
+__pycache__/
+*.py[cod]
+
+# Installed JavaScript dependencies
+node_modules/
+
+# Local test-runtime database
+data/*.db
+
+# Browser-test artifacts
+frontend/test-results/

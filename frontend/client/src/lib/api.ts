@@ -10,6 +10,12 @@ export class ApiError extends Error {
   }
 }
 
+export function describeApiError(error: unknown) {
+  if (error instanceof ApiError && error.status === 401) return "The username or password was not accepted.";
+  if (error instanceof Error) return error.message;
+  return "The local service could not complete that request.";
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = localStorage.getItem("aurora-token");
   const response = await fetch(`${API_BASE_URL}${path}`, {

@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "validate": "pnpm check && pnpm build"
+    "check:offline": "node scripts/check-renderer-offline.mjs",
+    "validate": "pnpm check && pnpm build && pnpm check:offline"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
