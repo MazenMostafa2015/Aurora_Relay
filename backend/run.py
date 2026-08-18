@@ -1,6 +1,7 @@
 """Secure replacement for backend/run.py in the packaged desktop backend."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -30,7 +31,8 @@ def setup_environment() -> Path:
     os.environ.setdefault("AURORA_LOGS_DIR", str(logs_dir))
     os.environ.setdefault("DATABASE_URL", f"sqlite:///{data_dir / 'aurora-relay.db'}")
     os.environ.setdefault("DEBUG", "false")
-    os.environ.setdefault("ALLOWED_HOSTS", "127.0.0.1,localhost")
+    # pydantic-settings decodes complex environment values as JSON before field validation.
+    os.environ.setdefault("ALLOWED_HOSTS", json.dumps(["127.0.0.1", "localhost"]))
     load_runtime_secret(config_dir)
     return data_dir
 
