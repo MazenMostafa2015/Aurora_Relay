@@ -14,6 +14,13 @@ async function mockLocalApi(page: Page) {
     { id: "github-local", provider: "github", display_name: "Engineering GitHub", status: "connected", sort_order: 1, configuration: {}, credential_configured: true, capabilities: ["repository.read", "issue.write"], last_tested_at: "2026-08-18T08:30:00Z", last_error: null, created_at: "2026-08-18T08:00:00Z", updated_at: "2026-08-18T08:30:00Z" },
     { id: "revit-local", provider: "revit", display_name: "Local Revit mock", status: "connected", sort_order: 2, configuration: { mode: "mock" }, credential_configured: false, capabilities: ["model.read", "parameter.write", "transaction.preview", "transaction.apply"], last_tested_at: "2026-08-18T08:30:00Z", last_error: null, created_at: "2026-08-18T08:00:00Z", updated_at: "2026-08-18T08:30:00Z" },
   ];
+  let agentLoop = {
+    id: "loop-local-001", name: "Repository improvement loop", enabled: false, hard_stop: false, status: "idle", runs_completed: 0, consecutive_failures: 0,
+    next_run_at: null, started_at: null, ends_at: "2026-08-25T20:00:00Z", last_error: null, latest_report: null,
+    config: { enabled: false, dry_run: true, schedule: { frequency: "daily", times_per_day: 5, duration_days: 7, start_time: "08:00", end_time: "20:00", time_zone: "UTC" }, scope: { areas: ["code", "tests", "ui", "connectors"], max_actions_per_loop: 8, allow_destructive_actions: false }, guardrails: { max_loops_total: 35, max_consecutive_failures: 3, require_approval_for: ["deploy", "release", "delete", "external"], rollback_on_error: true }, reporting: { summary_after_each_loop: true, daily_digest: true, final_report: true, notification_channel: "ui" }, repository: { branch_prefix: "aurora-agent/loop", allow_review_branch_push: true, allow_merge: false, allow_deploy: false, allow_release: false } },
+    created_at: "2026-08-18T08:00:00Z", updated_at: "2026-08-18T08:00:00Z",
+  };
+  let agentIterations: Array<Record<string, unknown>> = [];
 
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
@@ -52,6 +59,36 @@ async function mockLocalApi(page: Page) {
     }
     if (path.endsWith("/connectors") && request.method() === "GET") {
       await route.fulfill({ json: { connectors, count: connectors.length } });
+      return;
+    }
+    if (path.endsWith("/agent-loops") && request.method() === "GET") {
+      await route.fulfill({ json: { loops: [agentLoop], count: 1 } });
+      return;
+    }
+    if (path.endsWith("/agent-loops/loop-local-001/start") && request.method() === "POST") {
+      agentLoop = { ...agentLoop, enabled: true, status: "scheduled", next_run_at: "2026-08-19T08:00:00Z" };
+      await route.fulfill({ json: agentLoop });
+      return;
+    }
+    if (path.endsWith("/agent-loops/loop-local-001/pause") && request.method() === "POST") {
+      agentLoop = { ...agentLoop, enabled: false, status: "paused" };
+      await route.fulfill({ json: agentLoop });
+      return;
+    }
+    if (path.endsWith("/agent-loops/loop-local-001/hard-stop") && request.method() === "POST") {
+      agentLoop = { ...agentLoop, enabled: false, hard_stop: true, status: "stopped" };
+      await route.fulfill({ json: agentLoop });
+      return;
+    }
+    if (path.endsWith("/agent-loops/loop-local-001/run-dry") && request.method() === "POST") {
+      const iteration = { id: "iteration-local-001", loop_id: agentLoop.id, sequence: agentIterations.length + 1, status: "completed", dry_run: true, branch_name: "aurora-agent/loop/20260818-080000", plan_path: "reports/agent-loop/plan.json", log_path: "reports/agent-loop/log.json", report_path: "reports/agent-loop/report.json", plan: {}, actions: [], reflection: {}, validation: { ok: true }, error: null, started_at: "2026-08-18T08:00:00Z", completed_at: "2026-08-18T08:01:00Z" };
+      agentIterations = [iteration];
+      agentLoop = { ...agentLoop, runs_completed: 1, latest_report: { status: "completed" } };
+      await route.fulfill({ json: iteration });
+      return;
+    }
+    if (path.endsWith("/agent-loops/loop-local-001/iterations") && request.method() === "GET") {
+      await route.fulfill({ json: { iterations: agentIterations, count: agentIterations.length } });
       return;
     }
     if (path.endsWith("/revit/plan") && request.method() === "POST") {
@@ -161,6 +198,24 @@ test("connectors expose configured status and require a preview plus APPLY confi
   await expect(apply).toBeEnabled();
   await apply.click();
   await expect(page.getByText("Parameter updated in the mock model")).toBeVisible();
+});
+
+test("repository agent loop remains dry-run only and requires STOP before hard-stop", async ({ page }) => {
+  await mockLocalApi(page);
+  await page.goto("/");
+  await signIn(page);
+
+  await page.getByRole("button", { name: "Agent loop", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Agent loop" })).toBeVisible();
+  await expect(page.getByText("Dry-run only", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Run dry scan now" }).click();
+  await expect(page.getByText("#1", { exact: true })).toBeVisible();
+  const hardStop = page.getByRole("button", { name: "Hard stop" });
+  await expect(hardStop).toBeDisabled();
+  await page.getByLabel("Type STOP to hard stop loop").fill("STOP");
+  await expect(hardStop).toBeEnabled();
+  await hardStop.click();
+  await expect(page.getByText("Hard stopped", { exact: true })).toBeVisible();
 });
 
 test("secondary workspace controls provide visible actions across the dashboard", async ({ page }) => {

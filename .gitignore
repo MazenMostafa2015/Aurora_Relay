@@ -8,5 +8,13 @@ node_modules/
 # Local test-runtime database
 data/*.db
 
+# Local autonomous-loop service artifacts. Repository-worker evidence is
+# deliberately written to reports/agent-loop/ and remains trackable on
+# isolated review branches.
+aurora-state/
+aurora-plans/
+aurora-logs/
+aurora-reports/
+
 # Browser-test artifacts
 frontend/test-results/

@@ -1,5 +1,5 @@
 // Aurora Relay style reminder: keep data contracts crisp, operational, and easy to scan.
-export type ViewKey = "overview" | "tasks" | "tools" | "connectors" | "settings";
+export type ViewKey = "overview" | "tasks" | "tools" | "connectors" | "agent_loop" | "settings";
 export type TaskStatus = "executing" | "waiting" | "completed" | "failed" | "paused";
 
 export interface User {
@@ -149,4 +149,70 @@ export interface ConnectorState {
   upsertConnector: (connector: ConnectorRecord) => void;
   removeConnector: (connectorId: string) => void;
   setPendingRevitPlan: (plan: RevitPlan | null) => void;
+}
+
+export type AgentLoopStatus = "idle" | "scheduled" | "running" | "paused" | "stopped" | "completed";
+export type AgentLoopArea = "code" | "tests" | "docs" | "ui" | "connectors" | "security";
+
+export interface AgentLoopConfig {
+  enabled: boolean;
+  dry_run: true;
+  schedule: { frequency: "daily"; times_per_day: 5; duration_days: 7; start_time: string; end_time: string; time_zone: "UTC" };
+  scope: { areas: AgentLoopArea[]; max_actions_per_loop: number; allow_destructive_actions: false };
+  guardrails: { max_loops_total: number; max_consecutive_failures: number; require_approval_for: Array<"deploy" | "release" | "delete" | "external">; rollback_on_error: boolean };
+  reporting: { summary_after_each_loop: boolean; daily_digest: boolean; final_report: boolean; notification_channel: "ui" };
+  repository: { branch_prefix: string; allow_review_branch_push: boolean; allow_merge: false; allow_deploy: false; allow_release: false };
+}
+
+export interface AgentLoopRecord {
+  id: string;
+  name: string;
+  enabled: boolean;
+  hard_stop: boolean;
+  status: AgentLoopStatus;
+  config: AgentLoopConfig;
+  runs_completed: number;
+  consecutive_failures: number;
+  next_run_at: string | null;
+  started_at: string | null;
+  ends_at: string | null;
+  last_error: string | null;
+  latest_report: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface AgentLoopIteration {
+  id: string;
+  loop_id: string;
+  sequence: number;
+  status: "planning" | "completed" | "failed";
+  dry_run: boolean;
+  branch_name: string | null;
+  plan_path: string | null;
+  log_path: string | null;
+  report_path: string | null;
+  plan: Record<string, unknown>;
+  actions: Array<Record<string, unknown>>;
+  reflection: Record<string, unknown>;
+  validation: Record<string, unknown>;
+  error: string | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface AgentLoopState {
+  loops: AgentLoopRecord[];
+  selectedLoopId: string | null;
+  iterations: AgentLoopIteration[];
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
+  setLoops: (loops: AgentLoopRecord[]) => void;
+  upsertLoop: (loop: AgentLoopRecord) => void;
+  selectLoop: (loopId: string | null) => void;
+  setIterations: (iterations: AgentLoopIteration[]) => void;
+  setLoading: (value: boolean) => void;
+  setSaving: (value: boolean) => void;
+  setError: (value: string | null) => void;
 }

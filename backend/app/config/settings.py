@@ -58,6 +58,18 @@ class Settings(BaseSettings):
     allow_insecure_local_connectors: bool = False
     revit_live_bridge_enabled: bool = False
 
+    # Autonomous repository-loop defaults are deliberately conservative. The
+    # checked-in GitHub workflow is disabled until an operator enables its
+    # repository variable, and this service accepts dry-run actions only.
+    agent_loop_state_dir: str = "./aurora-state"
+    agent_loop_plan_dir: str = "./aurora-plans"
+    agent_loop_log_dir: str = "./aurora-logs/agent-loop"
+    agent_loop_report_dir: str = "./aurora-reports"
+    agent_loop_max_actions: int = Field(default=8, ge=1, le=8)
+    agent_loop_max_iterations: int = Field(default=35, ge=1, le=35)
+    agent_loop_max_consecutive_failures: int = Field(default=3, ge=1, le=3)
+    agent_loop_repository_push_enabled: bool = False
+
     # Runtime config is placed into os.environ by the launcher. Do not search
     # the current working directory for a user-supplied .env file.
     model_config = SettingsConfigDict(case_sensitive=False, extra="ignore")

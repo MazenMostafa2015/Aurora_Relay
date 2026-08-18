@@ -30,6 +30,7 @@ class User(Base):
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     connectors: Mapped[list["Connector"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     connector_credentials: Mapped[list["ConnectorCredential"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    agent_loops: Mapped[list["AgentLoop"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Task(Base):
@@ -154,3 +155,51 @@ class ConnectorOperation(Base):
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     connector: Mapped[Connector] = relationship(back_populates="operations")
+
+
+class AgentLoop(Base):
+    """User-scoped configuration and durable lifecycle state for one bounded loop."""
+
+    __tablename__ = "agent_loops"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(120), default="Repository improvement loop")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    hard_stop: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), default="idle", index=True)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    runs_completed: Mapped[int] = mapped_column(Integer, default=0)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    latest_report: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
+    user: Mapped[User] = relationship(back_populates="agent_loops")
+    iterations: Mapped[list["AgentLoopIteration"]] = relationship(back_populates="loop", cascade="all, delete-orphan", order_by="AgentLoopIteration.sequence")
+
+
+class AgentLoopIteration(Base):
+    """One immutable plan/action/reflection record. Secret values are never stored here."""
+
+    __tablename__ = "agent_loop_iterations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    loop_id: Mapped[str] = mapped_column(ForeignKey("agent_loops.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    sequence: Mapped[int] = mapped_column(Integer, index=True)
+    status: Mapped[str] = mapped_column(String(32), default="planned", index=True)
+    dry_run: Mapped[bool] = mapped_column(Boolean, default=True)
+    branch_name: Mapped[str | None] = mapped_column(String(180))
+    plan_path: Mapped[str | None] = mapped_column(String(500))
+    log_path: Mapped[str | None] = mapped_column(String(500))
+    report_path: Mapped[str | None] = mapped_column(String(500))
+    plan: Mapped[dict] = mapped_column(JSON, default=dict)
+    actions: Mapped[list] = mapped_column(JSON, default=list)
+    reflection: Mapped[dict] = mapped_column(JSON, default=dict)
+    validation: Mapped[dict] = mapped_column(JSON, default=dict)
+    error: Mapped[str | None] = mapped_column(String(500))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    loop: Mapped[AgentLoop] = relationship(back_populates="iterations")

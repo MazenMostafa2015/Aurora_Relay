@@ -1,0 +1,78 @@
+name: Repository agent loop (dry run)
+
+on:
+  workflow_dispatch:
+    inputs:
+      expires_at:
+        description: "ISO-8601 UTC expiry; the worker exits safely after this time"
+        required: true
+        type: string
+      push_review_branch:
+        description: "Push an evidence-only review branch after a successful dry run"
+        required: true
+        default: false
+        type: boolean
+  schedule:
+    - cron: "0 8,11,14,17,20 * * *"
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: aurora-repository-agent-loop
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    if: github.event_name == 'workflow_dispatch' || vars.AGENT_LOOP_SCHEDULE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AGENT_LOOP_EXPIRES_AT: ${{ github.event_name == 'workflow_dispatch' && inputs.expires_at || vars.AGENT_LOOP_EXPIRES_AT }}
+      PUSH_REVIEW_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.push_review_branch || vars.AGENT_LOOP_PUSH_REVIEW_BRANCH }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Enforce a configured seven-day window
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -n "${AGENT_LOOP_EXPIRES_AT}" || { echo "Set AGENT_LOOP_EXPIRES_AT before enabling scheduled runs."; exit 1; }
+          python -c "from datetime import datetime, UTC; import os; e=datetime.fromisoformat(os.environ['AGENT_LOOP_EXPIRES_AT'].replace('Z','+00:00')); assert e.tzinfo; assert datetime.now(UTC) < e.astimezone(UTC), 'Agent-loop window has expired'"
+      - name: Stop after three consecutive prior failures
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          previous="$(gh run list --workflow repository-agent-loop.yml --limit 3 --json conclusion --jq '[.[].conclusion] | join(",")' || true)"
+          if [ "${previous}" = "failure,failure,failure" ]; then
+            echo "Three prior consecutive failures detected; refusing another scheduled run."
+            exit 0
+          fi
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Install renderer dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Think, act, reflect (dry run only)
+        run: python backend/scripts/run_agent_loop_repository.py --dry-run --expires-at "${AGENT_LOOP_EXPIRES_AT}" --max-actions 8
+      - name: Push evidence-only review branch
+        if: success() && env.PUSH_REVIEW_BRANCH == 'true'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          branch="aurora-agent/loop/$(date -u +%Y%m%d-%H%M%S)"
+          git config user.name "aurora-relay-agent[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "${branch}"
+          git add reports/agent-loop
+          git diff --cached --quiet && { echo "No evidence changes to push."; exit 0; }
+          git commit -m "chore(agent-loop): dry-run evidence"
+          git push origin "${branch}"
+          echo "Created evidence-only review branch ${branch}; no merge, deploy, or release was attempted."

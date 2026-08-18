@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { api, describeApiError } from "@/lib/api";
 import { useAppStore } from "@/store/appStore";
+import { useAgentLoopStore } from "@/store/agentLoopStore";
 import { useConnectorStore } from "@/store/connectorStore";
 import { useSessionStore } from "@/store/sessionStore";
-import type { ConnectorDraft, ConnectorRecord, RevitPlan, Task, ViewKey } from "@/types/app";
+import type { AgentLoopConfig, AgentLoopRecord, ConnectorDraft, ConnectorRecord, RevitPlan, Task, ViewKey } from "@/types/app";
 
 export type CommandResult =
   | { ok: true; message?: string }
@@ -253,4 +254,79 @@ export function useConnectorCommands() {
       } catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); } finally { setSaving(false); }
     },
   }), [removeConnector, setConnectors, setError, setLoading, setPendingRevitPlan, setSaving, upsertConnector]);
+}
+
+export function useAgentLoopCommands() {
+  const setLoops = useAgentLoopStore((state) => state.setLoops);
+  const upsertLoop = useAgentLoopStore((state) => state.upsertLoop);
+  const setIterations = useAgentLoopStore((state) => state.setIterations);
+  const setLoading = useAgentLoopStore((state) => state.setLoading);
+  const setSaving = useAgentLoopStore((state) => state.setSaving);
+  const setError = useAgentLoopStore((state) => state.setError);
+
+  const requireSession = (): CommandResult | null => useSessionStore.getState().token ? null : failure("authentication", "Sign in to manage the repository agent loop.");
+  const refreshIterations = async (loopId: string) => {
+    const result = await api.listAgentLoopIterations(loopId);
+    setIterations(result.iterations);
+    return result.iterations;
+  };
+  const mutateLoop = async (operation: () => Promise<AgentLoopRecord>): Promise<CommandResult> => {
+    const gate = requireSession();
+    if (gate) return gate;
+    setSaving(true);
+    try {
+      const loop = await operation();
+      upsertLoop(loop);
+      setError(null);
+      return { ok: true };
+    } catch (error) {
+      const message = describeApiError(error);
+      setError(message);
+      toast.error(message);
+      return failure("request", message);
+    } finally { setSaving(false); }
+  };
+
+  return useMemo(() => ({
+    refresh: async (): Promise<CommandResult> => {
+      const gate = requireSession();
+      if (gate) return gate;
+      setLoading(true);
+      try { const result = await api.listAgentLoops(); setLoops(result.loops); setError(null); return { ok: true }; }
+      catch (error) { const message = describeApiError(error); setError(message); return failure("request", message); }
+      finally { setLoading(false); }
+    },
+    create: async (name: string, config: AgentLoopConfig): Promise<CommandResult> => {
+      if (name.trim().length < 3) return failure("validation", "Give the loop a descriptive name of at least three characters.");
+      if (config.dry_run !== true || config.scope.max_actions_per_loop > 8 || config.guardrails.max_consecutive_failures > 3) return failure("validation", "The safe defaults require dry-run mode, at most eight actions, and a three-failure stop.");
+      const result = await mutateLoop(() => api.createAgentLoop(name.trim(), config));
+      if (result.ok) toast.success("Safe repository loop created");
+      return result;
+    },
+    updateConfig: async (loop: AgentLoopRecord, config: AgentLoopConfig) => mutateLoop(() => api.updateAgentLoop(loop.id, { config })),
+    start: async (loop: AgentLoopRecord) => { const result = await mutateLoop(() => api.startAgentLoop(loop.id)); if (result.ok) toast.success("Loop scheduled; runs remain dry-run only."); return result; },
+    pause: async (loop: AgentLoopRecord) => mutateLoop(() => api.pauseAgentLoop(loop.id)),
+    hardStop: async (loop: AgentLoopRecord) => { const result = await mutateLoop(() => api.hardStopAgentLoop(loop.id)); if (result.ok) toast.warning("Loop hard-stopped. Create a new loop to resume automation."); return result; },
+    runDry: async (loop: AgentLoopRecord): Promise<CommandResult> => {
+      const gate = requireSession();
+      if (gate) return gate;
+      setSaving(true);
+      try {
+        const iteration = await api.runAgentLoopDry(loop.id);
+        await refreshIterations(loop.id);
+        const latest = await api.listAgentLoops(); setLoops(latest.loops);
+        toast.success(`Dry run ${iteration.sequence} recorded with no source changes.`);
+        return { ok: true };
+      } catch (error) { const message = describeApiError(error); setError(message); toast.error(message); return failure("request", message); }
+      finally { setSaving(false); }
+    },
+    loadIterations: async (loopId: string): Promise<CommandResult> => {
+      const gate = requireSession();
+      if (gate) return gate;
+      setLoading(true);
+      try { await refreshIterations(loopId); return { ok: true }; }
+      catch (error) { const message = describeApiError(error); setError(message); return failure("request", message); }
+      finally { setLoading(false); }
+    },
+  }), [setError, setIterations, setLoading, setLoops, setSaving, upsertLoop]);
 }

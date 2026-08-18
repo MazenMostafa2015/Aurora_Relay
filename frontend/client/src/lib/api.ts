@@ -1,5 +1,5 @@
 // Aurora Relay style reminder: network boundaries should be quiet, typed, and explicit about failure.
-import type { ConnectorActionResult, ConnectorDraft, ConnectorRecord, RevitOperationResult, RevitPlan, Tool, User } from "@/types/app";
+import type { AgentLoopConfig, AgentLoopIteration, AgentLoopRecord, ConnectorActionResult, ConnectorDraft, ConnectorRecord, RevitOperationResult, RevitPlan, Tool, User } from "@/types/app";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
@@ -55,4 +55,13 @@ export const api = {
   async runConnectorAction(connectorId: string, action: string, input: Record<string, unknown>) { return request<ConnectorActionResult>(`/connectors/${connectorId}/actions`, { method: "POST", body: JSON.stringify({ action, input }) }); },
   async planRevit(connectorId: string, payload: Record<string, unknown>) { return request<RevitPlan>(`/connectors/${connectorId}/revit/plan`, { method: "POST", body: JSON.stringify(payload) }); },
   async applyRevit(connectorId: string, operationId: string) { return request<RevitOperationResult>(`/connectors/${connectorId}/revit/operations/${operationId}/apply`, { method: "POST", body: JSON.stringify({ confirmation: "APPLY" }) }); },
+  async listAgentLoops() { return request<{ loops: AgentLoopRecord[]; count: number }>("/agent-loops"); },
+  async createAgentLoop(name: string, config: AgentLoopConfig) { return request<AgentLoopRecord>("/agent-loops", { method: "POST", body: JSON.stringify({ name, config }) }); },
+  async updateAgentLoop(loopId: string, update: { name?: string; config?: AgentLoopConfig }) { return request<AgentLoopRecord>(`/agent-loops/${loopId}`, { method: "PATCH", body: JSON.stringify(update) }); },
+  async startAgentLoop(loopId: string) { return request<AgentLoopRecord>(`/agent-loops/${loopId}/start`, { method: "POST" }); },
+  async pauseAgentLoop(loopId: string) { return request<AgentLoopRecord>(`/agent-loops/${loopId}/pause`, { method: "POST" }); },
+  async hardStopAgentLoop(loopId: string) { return request<AgentLoopRecord>(`/agent-loops/${loopId}/hard-stop`, { method: "POST" }); },
+  async runAgentLoopDry(loopId: string) { return request<AgentLoopIteration>(`/agent-loops/${loopId}/run-dry`, { method: "POST" }); },
+  async listAgentLoopIterations(loopId: string) { return request<{ iterations: AgentLoopIteration[]; count: number }>(`/agent-loops/${loopId}/iterations`); },
+  async getAgentLoopReport(loopId: string, iterationId: string) { return request<AgentLoopIteration>(`/agent-loops/${loopId}/iterations/${iterationId}/report`); },
 };
