@@ -47,6 +47,8 @@ export interface Tool {
 export interface WorkspaceState {
   user: User | null;
   token: string | null;
+  authDialogOpen: boolean;
+  authError: string | null;
   view: ViewKey;
   draft: string;
   tasks: Task[];
@@ -57,9 +59,14 @@ export interface WorkspaceState {
   isLoading: boolean;
   setView: (view: ViewKey) => void;
   setDraft: (draft: string) => void;
-  submitTask: () => void;
+  submitTask: (context?: Record<string, unknown>) => Promise<boolean>;
   selectTask: (id: string) => void;
   setConnected: (connected: boolean) => void;
   addEvent: (event: ActivityEvent) => void;
-  logout: () => void;
+  initializeSession: () => Promise<void>;
+  openAuthDialog: () => void;
+  closeAuthDialog: () => void;
+  login: (username: string, password: string) => Promise<boolean>;
+  register: (username: string, email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
 }

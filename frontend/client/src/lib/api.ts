@@ -1,7 +1,14 @@
 // Aurora Relay style reminder: network boundaries should be quiet, typed, and explicit about failure.
-import type { Task, Tool, User } from "@/types/app";
+import type { Tool, User } from "@/types/app";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
+
+export class ApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = localStorage.getItem("aurora-token");
@@ -13,7 +20,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers || {}),
     },
   });
-  if (!response.ok) throw new Error(`Request failed (${response.status})`);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { detail?: string } | null;
+    throw new ApiError(response.status, payload?.detail || `Request failed (${response.status})`);
+  }
   return response.json() as Promise<T>;
 }
 
@@ -22,9 +32,13 @@ export const api = {
   async login(username: string, password: string) {
     return request<{ access_token: string; user_id: string }>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) });
   },
-  async createTask(order: string, context: Record<string, unknown> = {}) {
-    return request<Task>("/tasks", { method: "POST", body: JSON.stringify({ order, context }) });
+  async register(username: string, email: string, password: string) {
+    return request<User>("/auth/register", { method: "POST", body: JSON.stringify({ username, email, password }) });
   },
-  async listTasks() { return request<{ tasks: Task[] }>("/tasks"); },
+  async logout() { return request<{ message: string }>("/auth/logout", { method: "POST" }); },
+  async createTask(order: string, context: Record<string, unknown> = {}) {
+    return request<Record<string, unknown>>("/tasks", { method: "POST", body: JSON.stringify({ order, context }) });
+  },
+  async listTasks() { return request<{ tasks: Record<string, unknown>[] }>("/tasks"); },
   async listTools() { return request<{ tools: Tool[] }>("/tools"); },
 };
