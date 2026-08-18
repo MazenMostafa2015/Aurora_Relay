@@ -26,7 +26,8 @@ $expectedSigner = ($ExpectedSignerThumbprint -replace '[^0-9A-Fa-f]', '').ToUppe
 $installDirectory = Join-Path $env:LOCALAPPDATA 'Programs\Aurora Relay'
 $applicationPath = Join-Path $installDirectory 'Aurora Relay.exe'
 $uninstallerPath = Join-Path $installDirectory 'Uninstall Aurora Relay.exe'
-$userDataPath = Join-Path $env:APPDATA 'Aurora Relay'
+# Electron derives the production userData folder from desktop/electron/package.json name.
+$userDataPath = Join-Path $env:APPDATA 'aurora-relay-desktop'
 $backendStartupLogPath = Join-Path $userDataPath 'logs\backend-startup.log'
 $diagnosticLogPath = Join-Path (Split-Path -Parent $EvidencePath) 'clean-machine-backend.log'
 $installer = Get-Item -LiteralPath $InstallerPath
@@ -51,6 +52,7 @@ $evidence = [ordered]@{
         application_present = $false
     }
     runtime = [ordered]@{
+        user_data_directory = $userDataPath
         application_process_id = $null
         backend_process_id = $null
         loopback_address = $null
