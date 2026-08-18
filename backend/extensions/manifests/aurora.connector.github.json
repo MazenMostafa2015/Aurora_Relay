@@ -1,0 +1,9 @@
+{
+  "id": "aurora.connector.github",
+  "display_name": "GitHub Connector Adapter",
+  "version": "1.0.0",
+  "description": "A built-in compatibility adapter that routes GitHub operations through the existing authenticated connector controls.",
+  "kind": "connector_adapter",
+  "permissions": ["connector.read"],
+  "connector_provider": "github"
+}

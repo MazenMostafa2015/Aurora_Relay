@@ -21,6 +21,20 @@ async function mockLocalApi(page: Page) {
     created_at: "2026-08-18T08:00:00Z", updated_at: "2026-08-18T08:00:00Z",
   };
   let agentIterations: Array<Record<string, unknown>> = [];
+  const extensions = [
+    {
+      id: "aurora.sandbox-echo", display_name: "Sandbox Echo", version: "1.0.0",
+      description: "A reviewed local sample that proves extension code runs only inside the Docker sandbox.",
+      kind: "sandboxed_tool", permissions: ["sandbox.execute"], entrypoint: "sandbox-echo.js", connector_provider: null,
+      installed: false, status: "not_installed", enabled: false, configuration: {}, last_error: null,
+    },
+    {
+      id: "aurora.connector.github", display_name: "GitHub Connector Adapter", version: "1.0.0",
+      description: "A built-in compatibility adapter that routes GitHub operations through existing authenticated connector controls.",
+      kind: "connector_adapter", permissions: ["connector.read"], entrypoint: null, connector_provider: "github",
+      installed: false, status: "not_installed", enabled: false, configuration: {}, last_error: null,
+    },
+  ];
 
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
@@ -55,6 +69,54 @@ async function mockLocalApi(page: Page) {
         steps: [{ id: "step-1", task_id: "task-live-001", description: "Frame the request", status: "executing" }],
         created_at: "2026-08-18T08:30:00Z", context: {}, estimated_complexity: "moderate",
       } });
+      return;
+    }
+    if (path.endsWith("/operations/health") && request.method() === "GET") {
+      await route.fulfill({ json: {
+        generated_at: "2026-08-18T09:15:00Z",
+        system: { status: "operational", version: "0.8.22", uptime_seconds: 7260, last_loop_completion: "2026-08-18T08:55:00Z" },
+        connectors: [
+          { id: "github-local", display_name: "Engineering GitHub", provider: "github", status: "connected", last_connected: "2026-08-18T08:30:00Z", error: null },
+          { id: "revit-local", display_name: "Local Revit mock", provider: "revit", status: "warning", last_connected: null, error: "Local bridge is awaiting an operator test" },
+        ],
+        agent_loop: { state: "idle", current_iteration: 0, total_iterations: 8, last_result: "Review-required evidence only", next_run: null, recent_iterations: [] },
+        release: { version: "v0.8.22", sha256_verified: true, provenance_verified: true, signer_pinned: true, timestamp_present: true, clean_machine_verified: true, trust_note: "Internal self-signed signer pin is recorded; public trust is not asserted." },
+        vault: { state: "ready", backend: "windows-credential-vault", fallback: false, message: "Credential protection is ready. Connector secret values are never returned to this dashboard." },
+        activities: [{ id: "release-001", type: "success", message: "v0.8.22 evidence verified", source: "release ledger", timestamp: "2026-08-18T09:00:00Z" }],
+        alerts: [{ id: "revit-bridge", severity: "warning", message: "Revit bridge needs a local operator test", recommendation: "Open Connectors and run the Revit mock test." }],
+      } });
+      return;
+    }
+    if (path.endsWith("/extensions/catalog") && request.method() === "GET") {
+      await route.fulfill({ json: { extensions, count: extensions.length } });
+      return;
+    }
+    if (path.endsWith("/extensions") && request.method() === "POST") {
+      const body = request.postDataJSON() as { extension_id: string };
+      const index = extensions.findIndex((item) => item.id === body.extension_id);
+      if (index < 0) { await route.fulfill({ status: 404, json: { detail: "Unknown reviewed extension" } }); return; }
+      extensions[index] = { ...extensions[index], installed: true, status: "disabled" };
+      await route.fulfill({ status: 201, json: extensions[index] });
+      return;
+    }
+    const extensionUpdate = path.match(/\/extensions\/([^/]+)$/);
+    if (extensionUpdate && request.method() === "PATCH") {
+      const extensionId = decodeURIComponent(extensionUpdate[1]);
+      const index = extensions.findIndex((item) => item.id === extensionId);
+      if (index < 0) { await route.fulfill({ status: 404, json: { detail: "Unknown reviewed extension" } }); return; }
+      const body = request.postDataJSON() as { enabled?: boolean; configuration?: Record<string, unknown> };
+      const current = extensions[index];
+      extensions[index] = {
+        ...current,
+        enabled: typeof body.enabled === "boolean" ? body.enabled : current.enabled,
+        status: typeof body.enabled === "boolean" ? (body.enabled ? "ready" : "disabled") : current.status,
+        configuration: body.configuration ?? current.configuration,
+      };
+      await route.fulfill({ json: extensions[index] });
+      return;
+    }
+    if (path.endsWith("/extensions/aurora.sandbox-echo/execute") && request.method() === "POST") {
+      await route.fulfill({ json: { extension_id: "aurora.sandbox-echo", state: "completed", message: "Sandbox command completed without host execution.", exit_code: 0, stdout: "sandbox echo: Aurora Relay", stderr: "" } });
       return;
     }
     if (path.endsWith("/connectors") && request.method() === "GET") {
@@ -183,6 +245,64 @@ test("release evidence exposes the signed installer and locally inspectable veri
   await expect(page.getByRole("link", { name: "Download Aurora-Relay-0.8.22-win-x64.exe" })).toHaveAttribute("href", /Aurora-Relay-0.8.22-win-x64.exe/);
   await page.getByRole("button", { name: "Copy Installer SHA-256" }).click();
   await expect(page.getByText("Installer SHA-256 copied")).toBeVisible();
+});
+
+test("operations health keeps a packaged fallback until the operator requests a local authenticated refresh", async ({ page }) => {
+  await mockLocalApi(page);
+  await page.goto("/");
+  await signIn(page);
+
+  await page.getByRole("button", { name: "Operations", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Operations", exact: true })).toBeVisible();
+  await expect(page.getByText("Packaged local fallback", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Refresh operational status" }).click();
+  await expect(page.getByLabel("Operational health summary").getByText("Operational", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Connectors", exact: true })).toBeVisible();
+  await expect(page.getByText("Engineering GitHub", { exact: true })).toBeVisible();
+  await expect(page.getByText("v0.8.22 evidence verified", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: /Dismiss alert: Revit bridge needs a local operator test/ }).click();
+  await expect(page.getByText("No active operational alerts.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Manage" }).click();
+  await expect(page.getByRole("heading", { name: "Connectors", exact: true })).toBeVisible();
+});
+
+test("reviewed local extensions remain disabled by default and execute only through the Docker sandbox boundary", async ({ page }) => {
+  await mockLocalApi(page);
+  await page.goto("/");
+  await signIn(page);
+
+  await page.getByRole("button", { name: "Extensions", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Extensions", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sandbox Echo", exact: true })).toBeVisible();
+  await expect(page.locator(".extension-hero-seal")).toContainText("Host execution");
+  await expect(page.getByRole("button", { name: "Install disabled" })).toBeVisible();
+  await page.getByRole("button", { name: "Install disabled" }).click();
+  await expect(page.getByRole("button", { name: "Enable extension" })).toBeVisible();
+  await expect(page.getByText("Disabled extensions cannot run.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Enable extension" }).click();
+  await expect(page.getByRole("button", { name: "Run in Docker" })).toBeEnabled();
+  await page.getByRole("button", { name: "Run in Docker" }).click();
+  await expect(page.getByText("Sandbox result", { exact: true })).toBeVisible();
+  await expect(page.getByText("sandbox echo: Aurora Relay", { exact: true })).toBeVisible();
+});
+
+test("built-in connector adapters expose non-secret configuration without bypassing connector credential controls", async ({ page }) => {
+  await mockLocalApi(page);
+  await page.goto("/");
+  await signIn(page);
+
+  await page.getByRole("button", { name: "Extensions", exact: true }).click();
+  await page.getByRole("button", { name: /GitHub Connector Adapter/ }).click();
+  await expect(page.getByRole("heading", { name: "GitHub Connector Adapter", exact: true })).toBeVisible();
+  await expect(page.getByText("Built-in adapter for the existing", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Install disabled" }).click();
+  await page.getByLabel("Extension configuration JSON").fill('{\n  "repository_scope": "read"\n}');
+  await page.getByRole("button", { name: "Save configuration" }).click();
+  await expect(page.getByText("Extension configuration saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Credentials, tokens, and passwords are rejected here", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run in Docker" })).toHaveCount(0);
 });
 
 test("sign-in dialog supports local account creation", async ({ page }) => {

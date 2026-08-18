@@ -7,6 +7,7 @@ const netModule = require("node:net");
 const path = require("node:path");
 const { AppUpdater } = require("./updater");
 const { SetupWizard } = require("./setup-wizard");
+const { DesktopCredentialVault } = require("./vault");
 
 let mainWindow;
 let tray;
@@ -14,6 +15,26 @@ let backendProcess;
 let backendPort;
 let updater;
 let isQuitting = false;
+let vaultStatus = { state: "locked", backend: "initializing", fallback: false, reason: "Credential protection is initializing." };
+
+async function provisionConnectorVault() {
+  const userData = app.getPath("userData");
+  const legacyPath = process.env.AURORA_CONNECTOR_VAULT_PATH;
+  const vault = DesktopCredentialVault.withElectron({ userData, legacyKeyPaths: legacyPath ? [legacyPath] : [] });
+  const provisioned = await vault.provisionBackendKey();
+  vaultStatus = provisioned.status;
+  process.env.AURORA_CONNECTOR_VAULT_BACKEND = vaultStatus.backend;
+  process.env.AURORA_CONNECTOR_VAULT_FALLBACK = vaultStatus.fallback ? "1" : "0";
+  if (provisioned.key) {
+    process.env.AURORA_CONNECTOR_VAULT_KEY = provisioned.key;
+    delete process.env.AURORA_CONNECTOR_VAULT_LOCKED;
+    delete process.env.AURORA_CONNECTOR_VAULT_LOCK_REASON;
+  } else {
+    delete process.env.AURORA_CONNECTOR_VAULT_KEY;
+    process.env.AURORA_CONNECTOR_VAULT_LOCKED = "1";
+    process.env.AURORA_CONNECTOR_VAULT_LOCK_REASON = vaultStatus.reason || "Credential protection is unavailable.";
+  }
+}
 
 function appendBackendStartupLog(stream, data) {
   try {
@@ -55,6 +76,7 @@ function spawnBackend() {
     ...process.env,
     AURORA_PORT: String(backendPort),
     AURORA_BIND_HOST: "127.0.0.1",
+    AURORA_APP_DATA_DIR: app.getPath("userData"),
     AURORA_FRONTEND_DIR: app.isPackaged ? path.join(process.resourcesPath, "frontend") : path.join(__dirname, "..", "..", "frontend-dist"),
     PYTHONUNBUFFERED: "1",
   };
@@ -148,6 +170,7 @@ function createTray() {
 }
 
 async function boot() {
+  await provisionConnectorVault();
   backendPort = await choosePort();
   spawnBackend();
   createWindow();
@@ -174,7 +197,8 @@ app.on("before-quit", () => { isQuitting = true; stopBackend(); });
 app.on("window-all-closed", () => { if (process.platform === "darwin") app.quit(); });
 app.on("activate", () => { if (!mainWindow) createWindow(); else mainWindow.show(); });
 
-ipcMain.handle("app:get-status", () => ({ backendPort, backendRunning: Boolean(backendProcess), version: app.getVersion() }));
+ipcMain.handle("app:get-status", () => ({ backendPort, backendRunning: Boolean(backendProcess), version: app.getVersion(), vault: vaultStatus }));
+ipcMain.handle("vault:get-status", () => vaultStatus);
 ipcMain.handle("app:minimize-to-tray", () => mainWindow?.hide());
 ipcMain.handle("app:quit", () => { isQuitting = true; app.quit(); });
 ipcMain.handle("app:open-external", (_event, url) => {

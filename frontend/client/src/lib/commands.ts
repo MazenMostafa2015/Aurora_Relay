@@ -4,12 +4,14 @@ import { api, describeApiError } from "@/lib/api";
 import { useAppStore } from "@/store/appStore";
 import { useAgentLoopStore } from "@/store/agentLoopStore";
 import { useConnectorStore } from "@/store/connectorStore";
+import { useExtensionStore } from "@/store/extensionStore";
+import { useHealthStore } from "@/store/healthStore";
 import { useSessionStore } from "@/store/sessionStore";
 import type { AgentLoopConfig, AgentLoopRecord, ConnectorDraft, ConnectorRecord, RevitPlan, Task, ViewKey } from "@/types/app";
 
 export type CommandResult =
   | { ok: true; message?: string }
-  | { ok: false; code: "validation" | "authentication" | "request"; message: string };
+  | { ok: false; code: "validation" | "authentication" | "request" | "sandbox"; message: string };
 
 function failure(code: Extract<CommandResult, { ok: false }>['code'], message: string): CommandResult {
   return { ok: false, code, message };
@@ -256,6 +258,49 @@ export function useConnectorCommands() {
   }), [removeConnector, setConnectors, setError, setLoading, setPendingRevitPlan, setSaving, upsertConnector]);
 }
 
+export function useHealthCommands() {
+  const setSnapshot = useHealthStore((state) => state.setSnapshot);
+  const setLoading = useHealthStore((state) => state.setLoading);
+  const setTestingConnectorId = useHealthStore((state) => state.setTestingConnectorId);
+  const setError = useHealthStore((state) => state.setError);
+  const setConnectors = useConnectorStore((state) => state.setConnectors);
+
+  return useMemo(() => ({
+    refresh: async (announce = false): Promise<CommandResult> => {
+      if (!useSessionStore.getState().token) {
+        return failure("authentication", "Sign in to refresh live operational status.");
+      }
+      setLoading(true);
+      try {
+        setSnapshot(await api.getOperationsHealth());
+        if (announce) toast.success("Operational status refreshed");
+        return { ok: true };
+      } catch (error) {
+        const message = describeApiError(error);
+        setError(message);
+        if (announce) toast.error(message);
+        return failure("request", message);
+      } finally { setLoading(false); }
+    },
+    testConnector: async (connectorId: string): Promise<CommandResult> => {
+      if (!useSessionStore.getState().token) return failure("authentication", "Sign in to test a connector.");
+      setTestingConnectorId(connectorId);
+      try {
+        const result = await api.testConnector(connectorId);
+        const latest = await api.listConnectors();
+        setConnectors(latest.connectors);
+        await api.getOperationsHealth().then(setSnapshot).catch(() => undefined);
+        result.ok ? toast.success(result.message) : toast.error(result.message);
+        return result.ok ? { ok: true, message: result.message } : failure("request", result.message);
+      } catch (error) {
+        const message = describeApiError(error);
+        toast.error(message);
+        return failure("request", message);
+      } finally { setTestingConnectorId(null); }
+    },
+  }), [setConnectors, setError, setLoading, setSnapshot, setTestingConnectorId]);
+}
+
 export function useAgentLoopCommands() {
   const setLoops = useAgentLoopStore((state) => state.setLoops);
   const upsertLoop = useAgentLoopStore((state) => state.upsertLoop);
@@ -329,4 +374,66 @@ export function useAgentLoopCommands() {
       finally { setLoading(false); }
     },
   }), [setError, setIterations, setLoading, setLoops, setSaving, upsertLoop]);
+}
+
+export function useExtensionCommands() {
+  const setExtensions = useExtensionStore((state) => state.setExtensions);
+  const setLoading = useExtensionStore((state) => state.setLoading);
+  const setSaving = useExtensionStore((state) => state.setSaving);
+  const setError = useExtensionStore((state) => state.setError);
+  const setLastExecution = useExtensionStore((state) => state.setLastExecution);
+
+  const requireSession = (): CommandResult | null => useSessionStore.getState().token ? null : failure("authentication", "Sign in to manage reviewed local extensions.");
+  const refreshCatalog = async () => {
+    const catalog = await api.listExtensionCatalog();
+    setExtensions(catalog.extensions);
+  };
+
+  return useMemo(() => ({
+    refresh: async (): Promise<CommandResult> => {
+      const gate = requireSession();
+      if (gate) return gate;
+      setLoading(true);
+      try { await refreshCatalog(); setError(null); return { ok: true }; }
+      catch (error) { const message = describeApiError(error); setError(message); return failure("request", message); }
+      finally { setLoading(false); }
+    },
+    install: async (extensionId: string): Promise<CommandResult> => {
+      const gate = requireSession();
+      if (gate) return gate;
+      setSaving(true);
+      try { await api.installExtension(extensionId); await refreshCatalog(); toast.success("Extension installed disabled by default"); return { ok: true }; }
+      catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); }
+      finally { setSaving(false); }
+    },
+    setEnabled: async (extensionId: string, enabled: boolean): Promise<CommandResult> => {
+      const gate = requireSession();
+      if (gate) return gate;
+      setSaving(true);
+      try { await api.updateExtension(extensionId, { enabled }); await refreshCatalog(); toast.success(enabled ? "Extension enabled" : "Extension disabled"); return { ok: true }; }
+      catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); }
+      finally { setSaving(false); }
+    },
+    saveConfiguration: async (extensionId: string, configuration: Record<string, unknown>): Promise<CommandResult> => {
+      const gate = requireSession();
+      if (gate) return gate;
+      setSaving(true);
+      try { await api.updateExtension(extensionId, { configuration }); await refreshCatalog(); toast.success("Extension configuration saved"); return { ok: true }; }
+      catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); }
+      finally { setSaving(false); }
+    },
+    execute: async (extensionId: string): Promise<CommandResult> => {
+      const gate = requireSession();
+      if (gate) return gate;
+      setSaving(true);
+      try {
+        const result = await api.executeExtension(extensionId);
+        setLastExecution(result);
+        await refreshCatalog();
+        result.state === "completed" ? toast.success(result.message) : toast.warning(result.message);
+        return result.state === "completed" ? { ok: true } : failure("sandbox", result.message);
+      } catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); }
+      finally { setSaving(false); }
+    },
+  }), [setError, setExtensions, setLastExecution, setLoading, setSaving]);
 }

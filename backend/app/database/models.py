@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -31,6 +31,7 @@ class User(Base):
     connectors: Mapped[list["Connector"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     connector_credentials: Mapped[list["ConnectorCredential"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     agent_loops: Mapped[list["AgentLoop"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    extension_installations: Mapped[list["ExtensionInstallation"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Task(Base):
@@ -155,6 +156,34 @@ class ConnectorOperation(Base):
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     connector: Mapped[Connector] = relationship(back_populates="operations")
+
+
+class ExtensionInstallation(Base):
+    """A user-scoped activation record for a reviewed, local extension manifest.
+
+    Extension source is never copied into the database and no remote package URL is
+    stored.  The installed record only references a manifest that the local
+    registry can still validate on every lifecycle transition.
+    """
+
+    __tablename__ = "extension_installations"
+    __table_args__ = (UniqueConstraint("user_id", "extension_id", name="uq_extension_installation_user_extension"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    extension_id: Mapped[str] = mapped_column(String(120), index=True)
+    display_name: Mapped[str] = mapped_column(String(120))
+    version: Mapped[str] = mapped_column(String(32))
+    kind: Mapped[str] = mapped_column(String(32))
+    manifest: Mapped[dict] = mapped_column(JSON, default=dict)
+    configuration: Mapped[dict] = mapped_column(JSON, default=dict)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), default="installed", index=True)
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
+    user: Mapped[User] = relationship(back_populates="extension_installations")
 
 
 class AgentLoop(Base):

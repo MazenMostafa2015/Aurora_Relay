@@ -12,7 +12,7 @@ import { ConnectorsView } from "@/components/ConnectorsView";
 import {
   Activity, ArrowUpRight, Check, ChevronDown, CircleHelp, Clock3, Command, FileText,
   CirclePlus, Gauge, Github, Hexagon, LayoutDashboard, LogIn, LogOut, Menu, MoreHorizontal, Play, Plus,
-  Search, Settings2, ShieldCheck, Sparkles, TerminalSquare, UserRound, Wifi, Wrench, Boxes, RefreshCw, Trash2, Building2, Bot, BadgeCheck,
+  Search, Settings2, ShieldCheck, Sparkles, TerminalSquare, UserRound, Wifi, Wrench, Boxes, RefreshCw, Trash2, Building2, Bot, BadgeCheck, Puzzle,
 } from "lucide-react";
 
 const navItems: { key: ViewKey; label: string; icon: typeof LayoutDashboard }[] = [
@@ -20,6 +20,8 @@ const navItems: { key: ViewKey; label: string; icon: typeof LayoutDashboard }[] 
   { key: "tasks", label: "Task desk", icon: Activity },
   { key: "tools", label: "Tool explorer", icon: Wrench },
   { key: "connectors", label: "Connectors", icon: Boxes },
+  { key: "health", label: "Operations", icon: Gauge },
+  { key: "extensions", label: "Extensions", icon: Puzzle },
   { key: "agent_loop", label: "Agent loop", icon: Bot },
   { key: "release_evidence", label: "Release evidence", icon: BadgeCheck },
   { key: "settings", label: "Settings", icon: Settings2 },
@@ -27,6 +29,8 @@ const navItems: { key: ViewKey; label: string; icon: typeof LayoutDashboard }[] 
 
 const AgentLoopView = lazy(() => import("@/components/AgentLoopView").then((module) => ({ default: module.AgentLoopView })));
 const ReleaseEvidenceView = lazy(() => import("@/components/ReleaseEvidenceView").then((module) => ({ default: module.ReleaseEvidenceView })));
+const HealthDashboardView = lazy(() => import("@/components/HealthDashboardView").then((module) => ({ default: module.HealthDashboardView })));
+const ExtensionsView = lazy(() => import("@/components/ExtensionsView").then((module) => ({ default: module.ExtensionsView })));
 
 function StatusPill({ status }: { status: Task["status"] }) {
   const copy = { executing: "Running", waiting: "Needs review", completed: "Complete", failed: "Failed", paused: "Paused" }[status];
@@ -128,5 +132,5 @@ export default function Home() {
   const { hydrate, closeDialog, signIn, signUp } = useAuthCommands();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   useEffect(() => { void hydrate(); }, [hydrate]);
-  return <div className="app-shell"><button type="button" className="mobile-menu" onClick={() => setSidebarOpen((open) => !open)} aria-label="Toggle navigation"><Menu size={19} /></button><div className={sidebarOpen ? "sidebar-wrap open" : "sidebar-wrap"}><Sidebar /></div><main className="main-canvas">{view === "overview" && <Overview />}{view === "tasks" && <TasksView />}{view === "tools" && <ToolsView />}{view === "connectors" && <ConnectorsView header={<Header eyebrow="Integration control" title="Connectors" />} />}{view === "agent_loop" && <Suspense fallback={<div className="page-view"><Header eyebrow="Repository automation" title="Agent loop" /><section className="panel"><p>Loading loop controls…</p></section></div>}><AgentLoopView header={<Header eyebrow="Repository automation" title="Agent loop" />} /></Suspense>}{view === "release_evidence" && <Suspense fallback={<div className="page-view"><Header eyebrow="Release assurance" title="Release evidence" /><section className="panel"><p>Loading release evidence…</p></section></div>}><ReleaseEvidenceView header={<Header eyebrow="Release assurance" title="Release evidence" />} /></Suspense>}{view === "settings" && <SettingsView />}<footer className="app-footer"><span><Hexagon size={13} /> Aurora Relay / private workspace</span><span className="footer-right">build 0.8.22 <span className="footer-divider" /> <Wifi size={13} /> local-first</span></footer></main><ManusDialog open={authDialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} onLogin={async (username, password) => (await signIn(username, password)).ok} onRegister={async (username, email, password) => (await signUp(username, email, password)).ok} isSubmitting={authStatus === "authenticating"} error={authError} /></div>;
+  return <div className="app-shell"><button type="button" className="mobile-menu" onClick={() => setSidebarOpen((open) => !open)} aria-label="Toggle navigation"><Menu size={19} /></button><div className={sidebarOpen ? "sidebar-wrap open" : "sidebar-wrap"}><Sidebar /></div><main className="main-canvas">{view === "overview" && <Overview />}{view === "tasks" && <TasksView />}{view === "tools" && <ToolsView />}{view === "connectors" && <ConnectorsView header={<Header eyebrow="Integration control" title="Connectors" />} />}{view === "health" && <Suspense fallback={<div className="page-view"><Header eyebrow="Local observability" title="Operations" /><section className="panel"><p>Loading operational health…</p></section></div>}><HealthDashboardView header={<Header eyebrow="Local observability" title="Operations" />} /></Suspense>}{view === "extensions" && <Suspense fallback={<div className="page-view"><Header eyebrow="Local extensibility" title="Extensions" /><section className="panel"><p>Loading reviewed extensions…</p></section></div>}><ExtensionsView header={<Header eyebrow="Local extensibility" title="Extensions" />} /></Suspense>}{view === "agent_loop" && <Suspense fallback={<div className="page-view"><Header eyebrow="Repository automation" title="Agent loop" /><section className="panel"><p>Loading loop controls…</p></section></div>}><AgentLoopView header={<Header eyebrow="Repository automation" title="Agent loop" />} /></Suspense>}{view === "release_evidence" && <Suspense fallback={<div className="page-view"><Header eyebrow="Release assurance" title="Release evidence" /><section className="panel"><p>Loading release evidence…</p></section></div>}><ReleaseEvidenceView header={<Header eyebrow="Release assurance" title="Release evidence" />} /></Suspense>}{view === "settings" && <SettingsView />}<footer className="app-footer"><span><Hexagon size={13} /> Aurora Relay / private workspace</span><span className="footer-right">build 0.8.22 <span className="footer-divider" /> <Wifi size={13} /> local-first</span></footer></main><ManusDialog open={authDialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} onLogin={async (username, password) => (await signIn(username, password)).ok} onRegister={async (username, email, password) => (await signUp(username, email, password)).ok} isSubmitting={authStatus === "authenticating"} error={authError} /></div>;
 }

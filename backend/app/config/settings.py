@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     agent_loop_max_consecutive_failures: int = Field(default=3, ge=1, le=3)
     agent_loop_repository_push_enabled: bool = False
 
+    # Local extension discovery is deliberately directory-based. Remote URLs,
+    # package managers, and automatic code downloads are not extension inputs.
+    extension_registry_dir: str | None = None
+
     # Runtime config is placed into os.environ by the launcher. Do not search
     # the current working directory for a user-supplied .env file.
     model_config = SettingsConfigDict(case_sensitive=False, extra="ignore")

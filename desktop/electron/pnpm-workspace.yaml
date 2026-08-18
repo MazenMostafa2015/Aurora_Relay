@@ -2,5 +2,6 @@ packages:
   - "."
 
 allowBuilds:
+  '@github/keytar': true
   electron: true
   electron-winstaller: true

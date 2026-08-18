@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .api.middleware.core import RateLimiter, RequestMiddleware
-from .api.routes import admin, agent_loops, auth, connectors, tasks, tools
+from .api.routes import admin, agent_loops, auth, connectors, extensions, operations, tasks, tools
 from .api.websocket.handlers import manager
 from .config.settings import settings
 from .database.session import SessionLocal, init_db
@@ -37,6 +37,8 @@ app.include_router(tasks.router, prefix=settings.api_v1_str)
 app.include_router(tools.router, prefix=settings.api_v1_str)
 app.include_router(connectors.router, prefix=settings.api_v1_str)
 app.include_router(agent_loops.router, prefix=settings.api_v1_str)
+app.include_router(operations.router, prefix=settings.api_v1_str)
+app.include_router(extensions.router, prefix=settings.api_v1_str)
 app.include_router(admin.router, prefix=settings.api_v1_str)
 
 @app.get("/", tags=["System"])

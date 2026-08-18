@@ -7,7 +7,21 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:4173",
     trace: "on-first-retry",
+    colorScheme: "dark",
+    locale: "en-US",
+    timezoneId: "UTC",
+    viewport: { width: 1440, height: 1000 },
+    deviceScaleFactor: 1,
   },
+  expect: {
+    toHaveScreenshot: {
+      animations: "disabled",
+      caret: "hide",
+      scale: "css",
+      maxDiffPixelRatio: 0.005,
+    },
+  },
+  snapshotPathTemplate: "{testDir}/{testFilePath}-snapshots/{arg}{ext}",
   webServer: {
     command: "pnpm exec vite --host 127.0.0.1 --port 4173",
     url: "http://127.0.0.1:4173",

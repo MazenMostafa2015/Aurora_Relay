@@ -1,0 +1,9 @@
+{
+  "id": "aurora.connector.revit",
+  "display_name": "Revit Connector Adapter",
+  "version": "1.0.0",
+  "description": "A built-in compatibility adapter that routes Revit preview and apply operations through the guarded local connector workflow.",
+  "kind": "connector_adapter",
+  "permissions": ["connector.read"],
+  "connector_provider": "revit"
+}

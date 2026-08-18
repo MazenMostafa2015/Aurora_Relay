@@ -144,6 +144,185 @@ class HealthResponse(BaseModel):
     version: str
 
 
+class OperationalSystemHealth(BaseModel):
+    status: Literal["operational", "degraded", "critical"]
+    version: str
+    uptime_seconds: int
+    last_loop_completion: datetime | None = None
+    metrics: dict[str, float] | None = None
+
+
+class OperationalConnectorHealth(BaseModel):
+    id: str
+    provider: str
+    display_name: str
+    status: Literal["connected", "warning", "error", "disabled"]
+    last_connected: datetime | None = None
+    response_time_ms: int | None = None
+    error: str | None = None
+    credential_configured: bool
+
+
+class OperationalLoopIterationHealth(BaseModel):
+    iteration: int
+    timestamp: datetime | None = None
+    result: Literal["success", "failed", "partial"]
+    summary: str
+
+
+class OperationalAgentLoopHealth(BaseModel):
+    state: Literal["idle", "running", "paused", "stopped"]
+    current_iteration: int
+    total_iterations: int
+    last_result: Literal["success", "failed", "partial"] | None = None
+    next_run: datetime | None = None
+    recent_iterations: list[OperationalLoopIterationHealth] = Field(default_factory=list)
+
+
+class OperationalReleaseHealth(BaseModel):
+    version: str
+    sha256_verified: bool
+    provenance_verified: bool
+    signer_pinned: bool
+    timestamp_present: bool
+    clean_machine_verified: bool
+    trust_note: str
+
+
+class OperationalVaultHealth(BaseModel):
+    state: Literal["ready", "locked"]
+    backend: str
+    fallback: bool
+    message: str
+
+
+class OperationalActivity(BaseModel):
+    id: str
+    type: Literal["info", "success", "warning", "error"]
+    message: str
+    timestamp: datetime
+    source: str
+
+
+class OperationalAlert(BaseModel):
+    id: str
+    severity: Literal["warning", "error"]
+    message: str
+    recommendation: str | None = None
+
+
+class OperationsHealthResponse(BaseModel):
+    generated_at: datetime
+    system: OperationalSystemHealth
+    connectors: list[OperationalConnectorHealth] = Field(default_factory=list)
+    agent_loop: OperationalAgentLoopHealth
+    release: OperationalReleaseHealth
+    vault: OperationalVaultHealth
+    activities: list[OperationalActivity] = Field(default_factory=list)
+    alerts: list[OperationalAlert] = Field(default_factory=list)
+
+
+class ExtensionKind(str, Enum):
+    DASHBOARD_PANEL = "dashboard_panel"
+    SANDBOXED_TOOL = "sandboxed_tool"
+    CONNECTOR_ADAPTER = "connector_adapter"
+
+
+class ExtensionPermission(str, Enum):
+    SANDBOX_EXECUTE = "sandbox.execute"
+    CONNECTOR_READ = "connector.read"
+    AGENT_READ = "agent.read"
+
+
+class ExtensionManifest(BaseModel):
+    """Validated local extension metadata; unrecognized fields are rejected."""
+
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(min_length=3, max_length=120, pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    display_name: str = Field(min_length=2, max_length=120)
+    version: str = Field(min_length=3, max_length=32, pattern=r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$")
+    description: str = Field(min_length=8, max_length=500)
+    kind: ExtensionKind
+    permissions: list[ExtensionPermission] = Field(default_factory=list, max_length=8)
+    entrypoint: str | None = Field(default=None, max_length=160)
+    connector_provider: Literal["github", "revit"] | None = None
+
+    @field_validator("entrypoint")
+    @classmethod
+    def validate_entrypoint(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value.startswith(("/", "\\")) or ".." in value or ":" in value:
+            raise ValueError("Extension entrypoint must be a relative local filename")
+        if not value.endswith((".js", ".py")):
+            raise ValueError("Extension entrypoint must be a JavaScript or Python file")
+        return value
+
+    @field_validator("permissions")
+    @classmethod
+    def unique_permissions(cls, value: list[ExtensionPermission]) -> list[ExtensionPermission]:
+        if len(value) != len(set(value)):
+            raise ValueError("Extension permissions must be unique")
+        return value
+
+
+class ExtensionInstallRequest(BaseModel):
+    extension_id: str = Field(min_length=3, max_length=120, pattern=r"^[a-z0-9][a-z0-9._-]*$")
+
+
+class ExtensionUpdateRequest(BaseModel):
+    enabled: bool | None = None
+    configuration: dict[str, Any] | None = None
+
+    @field_validator("configuration")
+    @classmethod
+    def configuration_must_not_include_secrets(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        if value is None:
+            return value
+        blocked = {"token", "secret", "password", "authorization", "api_key", "credential"}
+        if any(key.lower().replace("-", "_") in blocked for key in value):
+            raise ValueError("Extension credentials are not accepted in configuration")
+        return value
+
+
+class ExtensionResponse(BaseModel):
+    id: str
+    extension_id: str
+    display_name: str
+    version: str
+    description: str
+    kind: ExtensionKind
+    permissions: list[ExtensionPermission] = Field(default_factory=list)
+    enabled: bool
+    status: str
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    last_error: str | None = None
+    last_run_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
+class ExtensionCatalogItem(ExtensionManifest):
+    installed: bool = False
+    enabled: bool = False
+    status: str | None = None
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    last_error: str | None = None
+
+
+class ExtensionCatalogResponse(BaseModel):
+    extensions: list[ExtensionCatalogItem] = Field(default_factory=list)
+
+
+class ExtensionExecutionResponse(BaseModel):
+    extension_id: str
+    state: Literal["completed", "failed", "blocked"]
+    message: str
+    exit_code: int | None = None
+    stdout: str = ""
+    stderr: str = ""
+
+
 class AdminStatsResponse(BaseModel):
     users: int
     tasks: int

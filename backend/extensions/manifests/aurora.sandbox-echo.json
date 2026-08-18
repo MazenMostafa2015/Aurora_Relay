@@ -1,0 +1,9 @@
+{
+  "id": "aurora.sandbox-echo",
+  "display_name": "Sandbox Echo",
+  "version": "1.0.0",
+  "description": "A reviewed local sample that proves extension code runs only inside the Docker sandbox.",
+  "kind": "sandboxed_tool",
+  "permissions": ["sandbox.execute"],
+  "entrypoint": "sandbox-echo.js"
+}

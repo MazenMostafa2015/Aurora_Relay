@@ -13,21 +13,17 @@
     "build:win:dir": "electron-builder --win nsis --dir",
     "build:mac": "electron-builder --mac dmg",
     "build:linux": "electron-builder --linux AppImage deb",
-    "lint:syntax": "node --check main.js && node --check preload.js && node --check updater.js && node --check setup-wizard.js && node --check setup-preload.js"
+    "lint:syntax": "node --check main.js && node --check preload.js && node --check updater.js && node --check setup-wizard.js && node --check setup-preload.js && node --check vault.js",
+    "test:vault": "node test-vault.js"
   },
   "dependencies": {
+    "@github/keytar": "^7.10.6",
     "electron-log": "^5.2.0",
     "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "electron": "^37.2.6",
     "electron-builder": "^26.0.12"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron",
-      "electron-winstaller"
-    ]
   },
   "build": {
     "appId": "com.aurora.relay",

@@ -1,5 +1,5 @@
 // Aurora Relay style reminder: keep data contracts crisp, operational, and easy to scan.
-export type ViewKey = "overview" | "tasks" | "tools" | "connectors" | "agent_loop" | "release_evidence" | "settings";
+export type ViewKey = "overview" | "tasks" | "tools" | "connectors" | "health" | "extensions" | "agent_loop" | "release_evidence" | "settings";
 export type TaskStatus = "executing" | "waiting" | "completed" | "failed" | "paused";
 
 export interface User {
@@ -215,4 +215,143 @@ export interface AgentLoopState {
   setLoading: (value: boolean) => void;
   setSaving: (value: boolean) => void;
   setError: (value: string | null) => void;
+}
+
+export type HealthSeverity = "info" | "success" | "warning" | "error";
+
+export interface HealthSystem {
+  status: "operational" | "degraded" | "critical";
+  version: string;
+  uptime_seconds: number;
+  last_loop_completion: string | null;
+  metrics?: { cpu?: number; memory?: number } | null;
+}
+
+export interface HealthConnector {
+  id: string;
+  provider: string;
+  display_name: string;
+  status: "connected" | "warning" | "error" | "disabled";
+  last_connected: string | null;
+  response_time_ms: number | null;
+  error: string | null;
+  credential_configured: boolean;
+}
+
+export interface HealthLoopIteration {
+  iteration: number;
+  timestamp: string | null;
+  result: "success" | "failed" | "partial";
+  summary: string;
+}
+
+export interface HealthAgentLoop {
+  state: "idle" | "running" | "paused" | "stopped";
+  current_iteration: number;
+  total_iterations: number;
+  last_result: "success" | "failed" | "partial" | null;
+  next_run: string | null;
+  recent_iterations: HealthLoopIteration[];
+}
+
+export interface HealthRelease {
+  version: string;
+  sha256_verified: boolean;
+  provenance_verified: boolean;
+  signer_pinned: boolean;
+  timestamp_present: boolean;
+  clean_machine_verified: boolean;
+  trust_note: string;
+}
+
+export interface HealthVault {
+  state: "ready" | "locked";
+  backend: string;
+  fallback: boolean;
+  message: string;
+}
+
+export interface HealthActivity {
+  id: string;
+  type: HealthSeverity;
+  message: string;
+  timestamp: string;
+  source: string;
+}
+
+export interface HealthAlert {
+  id: string;
+  severity: "warning" | "error";
+  message: string;
+  recommendation: string | null;
+}
+
+export interface HealthSnapshot {
+  generated_at: string;
+  system: HealthSystem;
+  connectors: HealthConnector[];
+  agent_loop: HealthAgentLoop;
+  release: HealthRelease;
+  vault: HealthVault;
+  activities: HealthActivity[];
+  alerts: HealthAlert[];
+}
+
+export interface HealthState {
+  snapshot: HealthSnapshot;
+  isLoading: boolean;
+  testingConnectorId: string | null;
+  error: string | null;
+  lastUpdated: string | null;
+  dismissedAlertIds: string[];
+  setSnapshot: (snapshot: HealthSnapshot) => void;
+  setLoading: (value: boolean) => void;
+  setTestingConnectorId: (value: string | null) => void;
+  setError: (value: string | null) => void;
+  dismissAlert: (alertId: string) => void;
+}
+
+export type ExtensionPermission = "sandbox.execute" | "connector.read" | "agent.read";
+export type ExtensionStatus = "not_installed" | "installed" | "disabled" | "ready" | "blocked" | "failed";
+
+export interface ExtensionManifestRecord {
+  id: string;
+  display_name: string;
+  version: string;
+  description: string;
+  kind: "sandboxed_tool" | "dashboard_panel" | "connector_adapter";
+  permissions: ExtensionPermission[];
+  entrypoint: string | null;
+  connector_provider: ConnectorProvider | null;
+  installed: boolean;
+  status: ExtensionStatus | null;
+  enabled: boolean;
+  configuration: Record<string, unknown>;
+  last_error: string | null;
+}
+
+export interface ExtensionExecutionResult {
+  extension_id: string;
+  state: "completed" | "blocked" | "failed";
+  message: string;
+  exit_code: number | null;
+  stdout: string;
+  stderr: string;
+}
+
+export interface ExtensionState {
+  extensions: ExtensionManifestRecord[];
+  selectedExtensionId: string | null;
+  query: string;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
+  lastExecution: ExtensionExecutionResult | null;
+  setExtensions: (extensions: ExtensionManifestRecord[]) => void;
+  selectExtension: (extensionId: string | null) => void;
+  setQuery: (query: string) => void;
+  setLoading: (value: boolean) => void;
+  setSaving: (value: boolean) => void;
+  setError: (value: string | null) => void;
+  setLastExecution: (result: ExtensionExecutionResult | null) => void;
 }

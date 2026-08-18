@@ -1,5 +1,5 @@
 // Aurora Relay style reminder: network boundaries should be quiet, typed, and explicit about failure.
-import type { AgentLoopConfig, AgentLoopIteration, AgentLoopRecord, ConnectorActionResult, ConnectorDraft, ConnectorRecord, RevitOperationResult, RevitPlan, Tool, User } from "@/types/app";
+import type { AgentLoopConfig, AgentLoopIteration, AgentLoopRecord, ConnectorActionResult, ConnectorDraft, ConnectorRecord, ExtensionExecutionResult, ExtensionManifestRecord, HealthSnapshot, RevitOperationResult, RevitPlan, Tool, User } from "@/types/app";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
@@ -64,4 +64,10 @@ export const api = {
   async runAgentLoopDry(loopId: string) { return request<AgentLoopIteration>(`/agent-loops/${loopId}/run-dry`, { method: "POST" }); },
   async listAgentLoopIterations(loopId: string) { return request<{ iterations: AgentLoopIteration[]; count: number }>(`/agent-loops/${loopId}/iterations`); },
   async getAgentLoopReport(loopId: string, iterationId: string) { return request<AgentLoopIteration>(`/agent-loops/${loopId}/iterations/${iterationId}/report`); },
+  async getOperationsHealth() { return request<HealthSnapshot>("/operations/health"); },
+  async listExtensionCatalog() { return request<{ extensions: ExtensionManifestRecord[]; count: number }>("/extensions/catalog"); },
+  async listExtensions() { return request<ExtensionManifestRecord[]>("/extensions"); },
+  async installExtension(extensionId: string) { return request<ExtensionManifestRecord>("/extensions", { method: "POST", body: JSON.stringify({ extension_id: extensionId }) }); },
+  async updateExtension(extensionId: string, update: { enabled?: boolean; configuration?: Record<string, unknown> }) { return request<ExtensionManifestRecord>(`/extensions/${extensionId}`, { method: "PATCH", body: JSON.stringify(update) }); },
+  async executeExtension(extensionId: string) { return request<ExtensionExecutionResult>(`/extensions/${extensionId}/execute`, { method: "POST" }); },
 };
