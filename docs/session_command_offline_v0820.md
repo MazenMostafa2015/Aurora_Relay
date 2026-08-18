@@ -45,4 +45,14 @@ The Vite build retains its existing advisory about a JavaScript chunk exceeding 
 
 ## Remaining release gates
 
-The protected Windows workflow remains the source of record for native signing, checksum generation, provenance manifest publication, and clean-machine installer verification. The v0.8.20 tag must be pushed without changing any previous immutable release tag; the installer evidence must be reviewed before this corrective release is presented as a completed signed desktop package.
+The protected Windows workflow completed successfully for the immutable `v0.8.20` tag. Its source revision is `9aa859c3994f1061fff8b8028a09b913f9fdca4e`, and release workflow run `32159539046` published the installer, SHA-256 manifest, provenance record, and clean-machine evidence.
+
+| Published check | Verified evidence |
+|---|---|
+| Installer identity | `Aurora-Relay-0.8.20-win-x64.exe` |
+| SHA-256 | `234bb11b60b5f38dbdc4bc0b78102ba846a05ecee67348e81960dd7aaf951071` in both `SHA256SUMS` and provenance. |
+| Signer pin | `223DEC322FF229C490C144320FB6B51EC23A6C2F` matched the protected expected internal certificate. |
+| Timestamp | The clean-machine evidence confirms a timestamp certificate is present. |
+| Installation path | Silent install succeeded, the app was present, its backend reached loopback health `200`, and silent uninstall removed the application while preserving user state. |
+
+The raw Windows Authenticode status in the evidence is `UnknownError`. This is expected for the private self-signed certificate outside a machine-wide trust store; the verifier additionally validates the exact pinned signer certificate through a custom trust chain and rejects any unexpected signer. Users should install the corresponding public internal certificate through their organization’s approved trust-distribution process if they require Windows to display the publisher as trusted.
