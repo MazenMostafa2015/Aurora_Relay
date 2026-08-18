@@ -40,6 +40,21 @@ Use **Hard stop** only after typing the required confirmation. It immediately ma
 
 GitHub Free includes 2,000 GitHub-hosted Actions minutes per month for private repositories, subject to GitHub’s current plan and billing policy. Thirty-five scheduled runs leave an average budget of roughly 57 minutes per run if no other Actions usage is counted. This workflow caps each job at 20 minutes, but the repository owner must check the current Actions usage page before enabling it because existing workflows share the quota. GitHub billing configuration can cause overage charges after included usage is exhausted.[^github-actions]
 
+## Release verification — v0.8.22
+
+The immutable `v0.8.22` tag resolves to source revision `1ebf09a8723c91d5657e5c3cd58902124ae0c487`. Its protected Windows release run [`32170293193`](https://github.com/MazenMostafa2015/Aurora_Relay/actions/runs/32170293193) completed successfully on 2026-08-18. The published release is available at [Aurora Relay v0.8.22](https://github.com/MazenMostafa2015/Aurora_Relay/releases/tag/v0.8.22).
+
+| Evidence item | Verified result |
+| --- | --- |
+| Installer | `Aurora-Relay-0.8.22-win-x64.exe` (166,373,512 bytes) |
+| SHA-256 | `04b83c2a92fec1fab981f5036087f31cd3946eb8b488dc3a93005ccbb577df18`; downloaded artifact passed `sha256sum -c SHA256SUMS` |
+| Provenance | `provenance.json` identifies the tag, revision, protected workflow, run ID, and installer digest; GitHub artifact attestation was attempted as a platform-dependent additional claim |
+| Signer pin | `223DEC322FF229C490C144320FB6B51EC23A6C2F` (the configured internal self-signed certificate thumbprint) |
+| Timestamp | The release uses the configured DigiCert timestamp endpoint, `http://timestamp.digicert.com`; clean-machine evidence reports a timestamp certificate present |
+| Clean-machine verification | Silent install and uninstall both exited `0`; the application and loopback backend started successfully, `/health` returned `200`, and retained user state survived uninstall |
+
+The clean-machine evidence reports `signature_status: UnknownError`, which is expected to require local trust installation for the internal self-signed certificate. It is therefore recorded as evidence of the pinned signer and timestamp presence, **not** as public commercial-certificate trust. Do not replace the installer, checksums, provenance, or the immutable tag; subsequent documentation changes must be committed separately to `main`.
+
 ## Revit and connector boundary
 
 The repository worker has no access to a local Revit model or desktop bridge. Keep Revit operation planning and the installed bridge’s plan → inspect → literal confirmation → apply path local to an authenticated desktop user. Do not add a Revit credential, a model path, or an external bridge address to repository variables.
