@@ -42,10 +42,11 @@ def main() -> None:
     import uvicorn
     from app.database.models import Base
     from app.database.session import engine
+    from app.main import app
 
     Base.metadata.create_all(bind=engine)
     uvicorn.run(
-        "app.main:app",
+        app,
         host=os.environ.get("AURORA_BIND_HOST", "127.0.0.1"),
         port=int(os.environ.get("AURORA_PORT", "0")),
         log_level=os.environ.get("LOG_LEVEL", "info").lower(),
