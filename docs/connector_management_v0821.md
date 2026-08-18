@@ -46,3 +46,9 @@ Windows Commander should call the validated `aurora-relay://connectors/{connecto
 ## Validation boundary
 
 Automated coverage verifies encrypted credential redaction, mocked GitHub issue dispatch, user-scoped ordering, Revit no-mutation-before-confirmation behavior, cross-user rejection, exactly-once apply, local-only startup network behavior, and the renderer confirmation UI. The sandbox has no reachable pyRevit/installed Revit bridge, so no live BIM model was opened or modified during this release.
+
+## Release evidence
+
+The immutable `v0.8.21` release was built from revision `0671b0c9f19b1e854e75c3d18a4b0b2541c226c6` by protected Windows workflow run `32164353918`. The published `Aurora-Relay-0.8.21-win-x64.exe` has SHA-256 `d0444bca8135903e5dcff5cdb1039b7b8bbe6fa170428d89e50b701b5b96d640`, which is identical in the release checksum and provenance files.
+
+The clean-machine record passed silent install, local backend health check (`200` on loopback), silent uninstall, and retained-user-state checks. It matched the pinned internal signer thumbprint `223DEC322FF229C490C144320FB6B51EC23A6C2F` and includes a timestamp certificate. The raw Authenticode status is `UnknownError`, which is expected on a clean runner that does not trust the private self-signed issuing certificate. The protected verifier additionally validates the exact signer with its configured custom trust chain; distribute the approved internal public certificate through organizational device management if Windows publisher trust UI is required.
