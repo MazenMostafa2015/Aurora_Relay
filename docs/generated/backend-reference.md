@@ -58,9 +58,13 @@ No source docstring is currently provided.
 | `api.models.OperationsHealthResponse` | class | No source docstring is currently provided. |
 | `api.models.ExtensionKind` | class | No source docstring is currently provided. |
 | `api.models.ExtensionPermission` | class | No source docstring is currently provided. |
+| `api.models.ExtensionSignatureStatus` | class | No source docstring is currently provided. |
+| `api.models.ExtensionPayloadFile` | class | No source docstring is currently provided. |
+| `api.models.ExtensionPayloadFile.validate_path` | method | No source docstring is currently provided. |
 | `api.models.ExtensionManifest` | class | Validated local extension metadata; unrecognized fields are rejected. |
 | `api.models.ExtensionManifest.validate_entrypoint` | method | No source docstring is currently provided. |
 | `api.models.ExtensionManifest.unique_permissions` | method | No source docstring is currently provided. |
+| `api.models.ExtensionManifest.validate_payload_contract` | method | No source docstring is currently provided. |
 | `api.models.ExtensionInstallRequest` | class | No source docstring is currently provided. |
 | `api.models.ExtensionUpdateRequest` | class | No source docstring is currently provided. |
 | `api.models.ExtensionUpdateRequest.configuration_must_not_include_secrets` | method | No source docstring is currently provided. |
@@ -101,6 +105,8 @@ No source docstring is currently provided.
 | `api.models.AgentLoopListResponse` | class | No source docstring is currently provided. |
 | `api.models.AgentLoopIterationResponse` | class | No source docstring is currently provided. |
 | `api.models.AgentLoopIterationListResponse` | class | No source docstring is currently provided. |
+| `api.models.HealthRetentionUpdateRequest` | class | No source docstring is currently provided. |
+| `api.models.HealthRetentionResponse` | class | No source docstring is currently provided. |
 
 ## `api.routes.admin`
 
@@ -148,6 +154,7 @@ Authenticated connector-management and Revit approval routes.
 
 | Symbol | Kind | Source summary |
 | --- | --- | --- |
+| `api.routes.connectors.enforce_sensitive_operation_limit` | function | Bound expensive or mutating local connector requests per authenticated owner. |
 | `api.routes.connectors.service` | function | No source docstring is currently provided. |
 | `api.routes.connectors.error` | function | No source docstring is currently provided. |
 | `api.routes.connectors.list_connectors` | function | No source docstring is currently provided. |
@@ -180,6 +187,8 @@ Authenticated operational state for the local dashboard.
 | Symbol | Kind | Source summary |
 | --- | --- | --- |
 | `api.routes.operations.get_operations_health` | function | Return the authenticated operator's bounded operational snapshot. |
+| `api.routes.operations.get_health_retention` | function | No source docstring is currently provided. |
+| `api.routes.operations.update_health_retention` | function | No source docstring is currently provided. |
 
 ## `api.routes.tasks`
 
@@ -790,7 +799,7 @@ No source docstring is currently provided.
 | `database.models.ConnectorCredential` | class | Encrypted secret material. Ciphertext must never cross the API boundary. |
 | `database.models.Connector` | class | No source docstring is currently provided. |
 | `database.models.ConnectorOperation` | class | No source docstring is currently provided. |
-| `database.models.ExtensionInstallation` | class | A user-scoped activation record for a reviewed, local extension manifest. Extension source is never copied into the database and no remote package URL is stored. The installed record only references a manifest that the local registry can still validate on every lifecycle transition. |
+| `database.models.ExtensionInstallation` | class | A user-scoped activation record for a locally verified signed package. Source bytes are never copied into the database. The persisted immutable package identity is compared with a fresh verification result at every security-sensitive lifecycle transition. |
 | `database.models.AgentLoop` | class | User-scoped configuration and durable lifecycle state for one bounded loop. |
 | `database.models.AgentLoopIteration` | class | One immutable plan/action/reflection record. Secret values are never stored here. |
 
@@ -938,19 +947,18 @@ Local, reviewed extension registry and fail-closed lifecycle services.
 
 ## `services.extensions.registry`
 
-Strict discovery of checked-in local extension manifests and entrypoints.
+Verified local extension package discovery; raw manifests are never executable.
 
 | Symbol | Kind | Source summary |
 | --- | --- | --- |
 | `services.extensions.registry.ExtensionRegistryError` | class | No source docstring is currently provided. |
-| `services.extensions.registry.ExtensionRegistry` | class | Loads only local JSON manifests stored under a controlled directory. |
+| `services.extensions.registry.ExtensionRegistry` | class | Loads only locally stored, successfully verified `.aurx` archives. |
 | `services.extensions.registry.ExtensionRegistry.catalog` | method | No source docstring is currently provided. |
-| `services.extensions.registry.ExtensionRegistry.manifest` | method | No source docstring is currently provided. |
-| `services.extensions.registry.ExtensionRegistry.entrypoint_path` | method | No source docstring is currently provided. |
+| `services.extensions.registry.ExtensionRegistry.package` | method | No source docstring is currently provided. |
 
 ## `services.extensions.service`
 
-Owner-scoped lifecycle service for reviewed local extensions.
+Owner-scoped lifecycle service for fail-closed, verified local extensions.
 
 | Symbol | Kind | Source summary |
 | --- | --- | --- |
@@ -962,6 +970,26 @@ Owner-scoped lifecycle service for reviewed local extensions.
 | `services.extensions.service.ExtensionService.update` | method | No source docstring is currently provided. |
 | `services.extensions.service.ExtensionService.execute` | method | No source docstring is currently provided. |
 
+## `services.extensions.signing`
+
+Fail-closed verification for Aurora Relay `.aurx` extension packages. The backend only receives trusted public metadata and never creates, imports, or exports publisher private keys. Package verification consumes one immutable archive buffer so executable bytes cannot change between verification and Docker staging.
+
+| Symbol | Kind | Source summary |
+| --- | --- | --- |
+| `services.extensions.signing.PackageVerificationError` | class | A safe, categorized failure that must block package use. |
+| `services.extensions.signing.TrustedSigner` | class | No source docstring is currently provided. |
+| `services.extensions.signing.VerifiedExtensionPackage` | class | No source docstring is currently provided. |
+| `services.extensions.signing.VerifiedExtensionPackage.entrypoint_bytes` | method | No source docstring is currently provided. |
+| `services.extensions.signing.b64url_encode` | function | No source docstring is currently provided. |
+| `services.extensions.signing.b64url_decode` | function | No source docstring is currently provided. |
+| `services.extensions.signing.key_id_from_public_key` | function | No source docstring is currently provided. |
+| `services.extensions.signing.canonical_json` | function | Return RFC 8785 bytes; ordinary json.dumps is never a signing substitute. |
+| `services.extensions.signing.strict_json` | function | No source docstring is currently provided. |
+| `services.extensions.signing.TrustedKeyring` | class | Loads a bootstrap-pinned, signed, offline package-signer keyring. |
+| `services.extensions.signing.TrustedKeyring.load` | method | No source docstring is currently provided. |
+| `services.extensions.signing.ExtensionPackageVerifier` | class | Defensively parses and verifies a local `.aurx` archive. |
+| `services.extensions.signing.ExtensionPackageVerifier.verify` | method | No source docstring is currently provided. |
+
 ## `services.operations_health`
 
 Owner-scoped operational health aggregation with no credential plaintext.
@@ -969,6 +997,8 @@ Owner-scoped operational health aggregation with no credential plaintext.
 | Symbol | Kind | Source summary |
 | --- | --- | --- |
 | `services.operations_health.OperationsHealthService` | class | Build a compact view for one authenticated operator without mutating state. |
+| `services.operations_health.OperationsHealthService.retention` | method | No source docstring is currently provided. |
+| `services.operations_health.OperationsHealthService.update_retention` | method | No source docstring is currently provided. |
 | `services.operations_health.OperationsHealthService.snapshot` | method | No source docstring is currently provided. |
 
 ## `services.task_service`
