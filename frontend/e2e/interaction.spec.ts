@@ -123,6 +123,14 @@ async function mockLocalApi(page: Page) {
       await route.fulfill({ json: { connectors, count: connectors.length } });
       return;
     }
+    const connectorDelete = path.match(/\/connectors\/([^/]+)$/);
+    if (connectorDelete && request.method() === "DELETE") {
+      const index = connectors.findIndex((item) => item.id === decodeURIComponent(connectorDelete[1]));
+      if (index < 0) { await route.fulfill({ status: 404, json: { detail: "Connector not found" } }); return; }
+      connectors.splice(index, 1);
+      await route.fulfill({ status: 204 });
+      return;
+    }
     if (path.endsWith("/agent-loops") && request.method() === "GET") {
       await route.fulfill({ json: { loops: [agentLoop], count: 1 } });
       return;
@@ -337,6 +345,21 @@ test("connectors expose configured status and require a preview plus APPLY confi
   await expect(page.getByText("Parameter updated in the mock model")).toBeVisible();
 });
 
+test("connector actions handle real empty-success responses and surface validation feedback", async ({ page }) => {
+  await mockLocalApi(page);
+  await page.goto("/");
+  await signIn(page);
+
+  await page.getByRole("button", { name: "Connectors", exact: true }).click();
+  await page.getByRole("button", { name: "Add connector" }).click();
+  await expect(page.getByText("Add a GitHub token to configure this connector.", { exact: true })).toBeVisible();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Remove Engineering GitHub" }).click();
+  await expect(page.getByText("Engineering GitHub removed", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Engineering GitHub/ })).toHaveCount(0);
+});
+
 test("repository agent loop remains dry-run only and requires STOP before hard-stop", async ({ page }) => {
   await mockLocalApi(page);
   await page.goto("/");
@@ -353,6 +376,29 @@ test("repository agent loop remains dry-run only and requires STOP before hard-s
   await expect(hardStop).toBeEnabled();
   await hardStop.click();
   await expect(page.getByText("Hard stopped", { exact: true })).toBeVisible();
+});
+
+test("agent-loop selection uses one semantic button and exposes its selected state", async ({ page }) => {
+  await mockLocalApi(page);
+  await page.goto("/");
+  await signIn(page);
+
+  await page.getByRole("button", { name: "Agent loop", exact: true }).click();
+  const selectLoop = page.getByRole("button", { name: "Select Repository improvement loop" });
+  await expect(selectLoop).toHaveAttribute("aria-pressed", "true");
+  await selectLoop.click();
+  await expect(page.getByRole("heading", { name: "Repository improvement loop" })).toBeVisible();
+});
+
+test("unauthenticated live-refresh requests open the sign-in gate instead of failing silently", async ({ page }) => {
+  await mockLocalApi(page);
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Operations", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh operational status" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("Sign in to refresh live operational status.", { exact: true })).toBeVisible();
 });
 
 test("secondary workspace controls provide visible actions across the dashboard", async ({ page }) => {

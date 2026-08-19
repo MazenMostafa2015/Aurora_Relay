@@ -17,6 +17,13 @@ function failure(code: Extract<CommandResult, { ok: false }>['code'], message: s
   return { ok: false, code, message };
 }
 
+function requireAuthenticated(message: string): CommandResult | null {
+  if (useSessionStore.getState().token) return null;
+  useSessionStore.getState().openAuthDialog(message);
+  toast.error(message);
+  return failure("authentication", message);
+}
+
 function mapApiTask(value: Record<string, unknown>): Task {
   const rawStatus = String(value.status || "waiting");
   const status: Task["status"] = rawStatus === "executing" || rawStatus === "completed" || rawStatus === "failed" || rawStatus === "paused"
@@ -168,7 +175,8 @@ export function useConnectorCommands() {
 
   return useMemo(() => ({
     refresh: async (): Promise<CommandResult> => {
-      if (!useSessionStore.getState().token) return failure("authentication", "Sign in to manage connectors.");
+      const gate = requireAuthenticated("Sign in to manage connectors.");
+      if (gate) return gate;
       setLoading(true);
       try {
         setConnectors((await api.listConnectors()).connectors);
@@ -181,8 +189,16 @@ export function useConnectorCommands() {
       } finally { setLoading(false); }
     },
     create: async (draft: ConnectorDraft): Promise<CommandResult> => {
-      if (!draft.display_name.trim()) return failure("validation", "Name the connector before saving it.");
-      if (draft.provider === "github" && !draft.credential) return failure("validation", "Add a GitHub token to configure this connector.");
+      if (!draft.display_name.trim()) {
+        const message = "Name the connector before saving it.";
+        toast.error(message);
+        return failure("validation", message);
+      }
+      if (draft.provider === "github" && !draft.credential) {
+        const message = "Add a GitHub token to configure this connector.";
+        toast.error(message);
+        return failure("validation", message);
+      }
       setSaving(true);
       try {
         const connector = await api.createConnector({ ...draft, display_name: draft.display_name.trim() });
@@ -203,8 +219,16 @@ export function useConnectorCommands() {
       } catch (error) { const message = describeApiError(error); toast.error(message); return failure("request", message); } finally { setSaving(false); }
     },
     runAction: async (connector: ConnectorRecord, action: string, input: Record<string, unknown>): Promise<CommandResult> => {
-      if (connector.provider !== "github") return failure("validation", "This action is only available for GitHub connectors.");
-      if (action === "create_issue" && (!String(input.owner || "").trim() || !String(input.repository || "").trim() || !String(input.title || "").trim())) return failure("validation", "Provide an owner, repository, and issue title.");
+      if (connector.provider !== "github") {
+        const message = "This action is only available for GitHub connectors.";
+        toast.error(message);
+        return failure("validation", message);
+      }
+      if (action === "create_issue" && (!String(input.owner || "").trim() || !String(input.repository || "").trim() || !String(input.title || "").trim())) {
+        const message = "Provide an owner, repository, and issue title.";
+        toast.error(message);
+        return failure("validation", message);
+      }
       setSaving(true);
       try {
         const providerInput = action === "create_issue" ? { ...input, repo: String(input.repository) } : input;
@@ -238,7 +262,11 @@ export function useConnectorCommands() {
       finally { setSaving(false); }
     },
     planRevitParameter: async (connectorId: string, elementId: number, parameter: string, value: string): Promise<CommandResult & { plan?: RevitPlan }> => {
-      if (!Number.isInteger(elementId) || elementId <= 0 || !parameter.trim()) return failure("validation", "Provide a positive element ID and parameter name.");
+      if (!Number.isInteger(elementId) || elementId <= 0 || !parameter.trim()) {
+        const message = "Provide a positive element ID and parameter name.";
+        toast.error(message);
+        return failure("validation", message);
+      }
       setSaving(true);
       try {
         const plan = await api.planRevit(connectorId, { operation: "set_parameter", transaction_name: `Aurora Relay: set ${parameter.trim()}`, set_parameter: { element_id: elementId, parameter: parameter.trim(), value } });
@@ -267,9 +295,8 @@ export function useHealthCommands() {
 
   return useMemo(() => ({
     refresh: async (announce = false): Promise<CommandResult> => {
-      if (!useSessionStore.getState().token) {
-        return failure("authentication", "Sign in to refresh live operational status.");
-      }
+      const gate = requireAuthenticated("Sign in to refresh live operational status.");
+      if (gate) return gate;
       setLoading(true);
       try {
         setSnapshot(await api.getOperationsHealth());
@@ -283,7 +310,8 @@ export function useHealthCommands() {
       } finally { setLoading(false); }
     },
     testConnector: async (connectorId: string): Promise<CommandResult> => {
-      if (!useSessionStore.getState().token) return failure("authentication", "Sign in to test a connector.");
+      const gate = requireAuthenticated("Sign in to test a connector.");
+      if (gate) return gate;
       setTestingConnectorId(connectorId);
       try {
         const result = await api.testConnector(connectorId);
@@ -309,7 +337,7 @@ export function useAgentLoopCommands() {
   const setSaving = useAgentLoopStore((state) => state.setSaving);
   const setError = useAgentLoopStore((state) => state.setError);
 
-  const requireSession = (): CommandResult | null => useSessionStore.getState().token ? null : failure("authentication", "Sign in to manage the repository agent loop.");
+  const requireSession = (): CommandResult | null => requireAuthenticated("Sign in to manage the repository agent loop.");
   const refreshIterations = async (loopId: string) => {
     const result = await api.listAgentLoopIterations(loopId);
     setIterations(result.iterations);
@@ -342,8 +370,16 @@ export function useAgentLoopCommands() {
       finally { setLoading(false); }
     },
     create: async (name: string, config: AgentLoopConfig): Promise<CommandResult> => {
-      if (name.trim().length < 3) return failure("validation", "Give the loop a descriptive name of at least three characters.");
-      if (config.dry_run !== true || config.scope.max_actions_per_loop > 8 || config.guardrails.max_consecutive_failures > 3) return failure("validation", "The safe defaults require dry-run mode, at most eight actions, and a three-failure stop.");
+      if (name.trim().length < 3) {
+        const message = "Give the loop a descriptive name of at least three characters.";
+        toast.error(message);
+        return failure("validation", message);
+      }
+      if (config.dry_run !== true || config.scope.max_actions_per_loop > 8 || config.guardrails.max_consecutive_failures > 3) {
+        const message = "The safe defaults require dry-run mode, at most eight actions, and a three-failure stop.";
+        toast.error(message);
+        return failure("validation", message);
+      }
       const result = await mutateLoop(() => api.createAgentLoop(name.trim(), config));
       if (result.ok) toast.success("Safe repository loop created");
       return result;
@@ -383,7 +419,7 @@ export function useExtensionCommands() {
   const setError = useExtensionStore((state) => state.setError);
   const setLastExecution = useExtensionStore((state) => state.setLastExecution);
 
-  const requireSession = (): CommandResult | null => useSessionStore.getState().token ? null : failure("authentication", "Sign in to manage reviewed local extensions.");
+  const requireSession = (): CommandResult | null => requireAuthenticated("Sign in to manage reviewed local extensions.");
   const refreshCatalog = async () => {
     const catalog = await api.listExtensionCatalog();
     setExtensions(catalog.extensions);

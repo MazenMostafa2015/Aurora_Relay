@@ -23,9 +23,9 @@ function createConfig(areas: AgentLoopConfig["scope"]["areas"]): AgentLoopConfig
   return { ...safeConfig, scope: { ...safeConfig.scope, areas } };
 }
 
-function LoopSummary({ loop }: { loop: AgentLoopRecord }) {
+function LoopSummary({ loop, selected, onSelect }: { loop: AgentLoopRecord; selected: boolean; onSelect: () => void }) {
   const state = loop.hard_stop ? "HARD STOP" : loop.status.replace("_", " ");
-  return <button type="button" className="agent-loop-card" aria-label={`Select ${loop.name}`}>
+  return <button type="button" className={`agent-loop-card${selected ? " selected" : ""}`} aria-label={`Select ${loop.name}`} aria-pressed={selected} onClick={onSelect}>
     <span className="agent-loop-state"><span className={`status-dot ${loop.status}`} />{state}</span>
     <strong>{loop.name}</strong>
     <small>{loop.runs_completed}/{loop.config.guardrails.max_loops_total} dry runs · {loop.config.scope.max_actions_per_loop} actions max</small>
@@ -66,7 +66,7 @@ export function AgentLoopView({ header }: { header: React.ReactNode }) {
     <div className="agent-loop-layout">
       <aside className="agent-loop-sidebar">
         <div className="agent-loop-toolbar"><div><span className="eyebrow compact">Loop inventory</span><h3>Repository loops</h3></div><button type="button" className="icon-button" aria-label="Refresh agent loops" onClick={() => void commands.refresh()} disabled={isLoading}><RefreshCw size={16} /></button></div>
-        <div className="agent-loop-list">{loops.length ? loops.map((loop) => <div key={loop.id} className={selected?.id === loop.id ? "selected" : ""} onClick={() => selectLoop(loop.id)}><LoopSummary loop={loop} /></div>) : <div className="agent-loop-empty"><Bot size={22} /><p>No loop is configured yet.</p></div>}</div>
+        <div className="agent-loop-list">{loops.length ? loops.map((loop) => <LoopSummary key={loop.id} loop={loop} selected={selected?.id === loop.id} onSelect={() => selectLoop(loop.id)} />) : <div className="agent-loop-empty"><Bot size={22} /><p>No loop is configured yet.</p></div>}</div>
         <div className="loop-create-form"><span className="eyebrow compact">New safe loop</span><label>Loop name<input value={name} onChange={(event) => setName(event.target.value)} maxLength={120} /></label><fieldset><legend>Improvement areas</legend>{(["code", "tests", "docs", "ui", "connectors", "security"] as const).map((area) => <label className="loop-check" key={area}><input type="checkbox" checked={areas.includes(area)} onChange={() => toggleArea(area)} />{area}</label>)}</fieldset><button type="button" className="run-button" onClick={() => void create()} disabled={isSaving || !areas.length}><WandSparkles size={15} /> Create dry-run loop</button></div>
       </aside>
 

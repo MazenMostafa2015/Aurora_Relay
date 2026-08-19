@@ -30,7 +30,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const payload = await response.json().catch(() => null) as { detail?: string } | null;
     throw new ApiError(response.status, payload?.detail || `Request failed (${response.status})`);
   }
-  return response.json() as Promise<T>;
+  if (response.status === 204 || response.headers.get("content-length") === "0") {
+    return undefined as T;
+  }
+  const payload = await response.text();
+  if (!payload.trim()) return undefined as T;
+  try {
+    return JSON.parse(payload) as T;
+  } catch {
+    return payload as T;
+  }
 }
 
 export const api = {

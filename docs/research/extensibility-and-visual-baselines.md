@@ -34,3 +34,17 @@ Electron `safeStorage` provides an encrypted on-disk fallback for a generated Fe
 
 [^github-keytar]: [@github/keytar — npm package documentation](https://www.npmjs.com/package/@github/keytar)
 [^electron-safe-storage]: [Electron — safeStorage API](https://www.electronjs.org/docs/latest/api/safe-storage)
+
+## Signed extension package primitives
+
+Aurora Relay will use **Ed25519** with the maintained Python `cryptography` implementation for local extension-package signatures. The library exposes key generation, signature creation, public-key verification, raw-key serialization, and a typed invalid-signature failure path. This supports a compact offline trust model: only public keys are provisioned to the verifier; private signing keys remain in a dedicated operator-controlled vault record and never enter the renderer, extension archive, source tree, or CI logs.[^cryptography-ed25519]
+
+The package signer and verifier need an identical byte sequence. Manifest JSON will therefore be parsed under strict constraints and canonicalized according to the JSON Canonicalization Scheme before signing or verification. JCS defines deterministic property sorting and UTF-8 serialization so semantically equivalent manifest documents produce an invariant cryptographic payload across supported environments.[^rfc8785]
+
+The initial format will be a local `.aurx` ZIP archive with a single `manifest.json`, a detached `manifest.json.sig`, and an explicit payload-digest index for every executable or resource file. Signing only the manifest would leave entrypoint content replaceable, so the manifest must bind each package path to a SHA-256 digest, normalized POSIX path, and size. The verifier will reject duplicate names, traversal, symlinks, unexpected top-level files, malformed encodings, untrusted/revoked keys, digest mismatches, and invalid signatures before extraction, registration, enablement, or Docker execution.
+
+The selected canonicalization dependency is the maintained `rfc8785` package, which exposes `dumps` for RFC 8785 bytes and explicit canonicalization errors for unsupported number values. It will be pinned with the backend dependencies and exercised with cross-process fixture vectors; generic JSON serialization will not be treated as a canonicalization substitute.[^python-rfc8785]
+
+[^cryptography-ed25519]: [PyCA cryptography — Ed25519 signing](https://cryptography.io/en/latest/hazmat/primitives/asymmetric/ed25519/)
+[^rfc8785]: [RFC 8785 — JSON Canonicalization Scheme](https://datatracker.ietf.org/doc/html/rfc8785)
+[^python-rfc8785]: [Trail of Bits — rfc8785 Python API documentation](https://trailofbits.github.io/rfc8785.py/)
