@@ -23,6 +23,9 @@ async function mockVisualLocalApi(page: Page) {
     enabled: false,
     configuration: {},
     last_error: null,
+    signature_status: "verified",
+    signer_key_id: "aurora-package-publisher-2026",
+    package_sha256: "c".repeat(64),
   }];
 
   await page.route("**/api/v1/**", async (route) => {

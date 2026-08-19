@@ -27,12 +27,14 @@ async function mockLocalApi(page: Page) {
       description: "A reviewed local sample that proves extension code runs only inside the Docker sandbox.",
       kind: "sandboxed_tool", permissions: ["sandbox.execute"], entrypoint: "sandbox-echo.js", connector_provider: null,
       installed: false, status: "not_installed", enabled: false, configuration: {}, last_error: null,
+      signature_status: "verified", signer_key_id: "aurora-package-publisher-2026", package_sha256: "a".repeat(64),
     },
     {
       id: "aurora.connector.github", display_name: "GitHub Connector Adapter", version: "1.0.0",
       description: "A built-in compatibility adapter that routes GitHub operations through existing authenticated connector controls.",
       kind: "connector_adapter", permissions: ["connector.read"], entrypoint: null, connector_provider: "github",
       installed: false, status: "not_installed", enabled: false, configuration: {}, last_error: null,
+      signature_status: "verified", signer_key_id: "aurora-package-publisher-2026", package_sha256: "b".repeat(64),
     },
   ];
 

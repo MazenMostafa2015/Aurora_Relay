@@ -1,5 +1,5 @@
 // Aurora Relay style reminder: editorial command center, graphite surfaces, relay cyan, saffron for human attention.
-import { ChangeEvent, KeyboardEvent, lazy, Suspense, useEffect, useRef, useState } from "react";
+import { ChangeEvent, KeyboardEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/store/appStore";
 import { useConnectorStore } from "@/store/connectorStore";
 import { useSessionStore } from "@/store/sessionStore";
@@ -89,13 +89,15 @@ function TaskProgress({ task }: { task: Task }) {
 function ThoughtProcess() {
   const events = useAppStore((state) => state.events);
   const { goTo } = useNavigationCommands();
-  return <section className="panel thought-panel"><div className="panel-heading"><div><div className="eyebrow compact">Signal feed</div><h2>What the agent sees</h2></div><span className="live-label"><span className="tiny-pulse" /> streaming</span></div><div className="thought-list" aria-live="polite">{events.map((event) => <div className={`thought-row kind-${event.kind}`} key={event.id}><div className="thought-time">{event.time}</div><div className="thought-marker"><span /></div><div className="thought-body"><strong>{event.label}</strong><p>{event.detail}</p></div></div>)}</div><button type="button" className="feed-button" onClick={() => { goTo("tasks"); toast.info("Live event stream is shown with the selected task"); }}>View full event stream <ArrowUpRight size={15} /></button></section>;
+  const recentEvents = useMemo(() => events.slice(-80), [events]);
+  return <section className="panel thought-panel"><div className="panel-heading"><div><div className="eyebrow compact">Signal feed</div><h2>What the agent sees</h2></div><span className="live-label"><span className="tiny-pulse" /> streaming</span></div><div className="thought-list" aria-live="polite">{recentEvents.map((event) => <div className={`thought-row kind-${event.kind}`} key={event.id}><div className="thought-time">{event.time}</div><div className="thought-marker"><span /></div><div className="thought-body"><strong>{event.label}</strong><p>{event.detail}</p></div></div>)}</div><button type="button" className="feed-button" onClick={() => { goTo("tasks"); toast.info("Live event stream is shown with the selected task"); }}>View full event stream <ArrowUpRight size={15} /></button></section>;
 }
 
 function HistoryPanel() {
   const tasks = useAppStore((state) => state.tasks);
   const { goTo, openTask } = useNavigationCommands();
-  return <section className="history-section"><div className="section-heading"><div><div className="eyebrow compact">Recent work</div><h2>Task history</h2></div><button type="button" className="text-button" onClick={() => goTo("tasks")}>View all <ArrowUpRight size={15} /></button></div><div className="history-table"><div className="history-head"><span>Task</span><span>Status</span><span>Started</span><span>Duration</span><span /></div>{tasks.map((task) => <button type="button" className="history-row" key={task.id} onClick={() => openTask(task.id)}><span className="history-title"><span className={`history-icon ${task.status}`}><FileText size={15} /></span><span><strong>{task.title}</strong><small>{task.id} · {task.tags.join(" / ")}</small></span></span><StatusPill status={task.status} /><span className="mono-cell">{task.createdAt}</span><span className="mono-cell">{task.duration}</span><ArrowUpRight size={15} className="row-arrow" /></button>)}</div></section>;
+  const recentTasks = useMemo(() => tasks.slice(0, 100), [tasks]);
+  return <section className="history-section"><div className="section-heading"><div><div className="eyebrow compact">Recent work</div><h2>Task history</h2></div><button type="button" className="text-button" onClick={() => goTo("tasks")}>View all <ArrowUpRight size={15} /></button></div><div className="history-table"><div className="history-head"><span>Task</span><span>Status</span><span>Started</span><span>Duration</span><span /></div>{recentTasks.map((task) => <button type="button" className="history-row" key={task.id} onClick={() => openTask(task.id)}><span className="history-title"><span className={`history-icon ${task.status}`}><FileText size={15} /></span><span><strong>{task.title}</strong><small>{task.id} · {task.tags.join(" / ")}</small></span></span><StatusPill status={task.status} /><span className="mono-cell">{task.createdAt}</span><span className="mono-cell">{task.duration}</span><ArrowUpRight size={15} className="row-arrow" /></button>)}</div></section>;
 }
 
 function ToolsView() {
