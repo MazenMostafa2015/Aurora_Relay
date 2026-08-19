@@ -12,6 +12,11 @@ function StatusPill({ status }: { status: ExtensionManifestRecord["status"] }) {
   return <span className={`extension-status ${normalized}`}><span />{label}</span>;
 }
 
+function SignaturePill({ status }: { status: ExtensionManifestRecord["signature_status"] }) {
+  const label = status === "verified" ? "Signature verified" : `Signature ${status.replace("_", " ")}`;
+  return <span className={`extension-status ${status === "verified" ? "ready" : "blocked"}`}><span />{label}</span>;
+}
+
 export function ExtensionsView({ header }: { header: ReactNode }) {
   const token = useSessionStore((state) => state.token);
   const extensions = useExtensionStore((state) => state.extensions);
@@ -44,7 +49,7 @@ export function ExtensionsView({ header }: { header: ReactNode }) {
   return <div className="page-view extensions-view">
     {header}
     <section className="extension-hero">
-      <div><div className="eyebrow compact">Reviewed local registry</div><h2>Extensions stay <em>contained.</em></h2><p>Only checked-in manifests appear here. Installs begin disabled, permission claims remain visible, and executable tools use the Docker sandbox or stop.</p></div>
+      <div><div className="eyebrow compact">Signed local registry</div><h2>Extensions stay <em>contained.</em></h2><p>Only verified local packages appear here. Installs begin disabled, signer state remains visible, and executable tools use the Docker sandbox or stop.</p></div>
       <div className="extension-hero-seal"><ShieldCheck size={19} /><span>Host execution<br />is never a fallback</span></div>
     </section>
     <div className="extension-toolbar"><label className="extension-search"><Search size={16} /><input aria-label="Search extensions" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search the reviewed catalog" /></label><button type="button" className="extension-refresh" onClick={() => void refresh()} disabled={isLoading || isSaving}>{isLoading ? "Refreshing…" : "Refresh catalog"}</button></div>
@@ -56,14 +61,14 @@ export function ExtensionsView({ header }: { header: ReactNode }) {
       </section>
       <section className="extension-detail" aria-live="polite">
         {selected ? <>
-          <div className="extension-detail-heading"><div><div className="eyebrow compact">{selected.kind.replace("_", " ")}</div><h2>{selected.display_name}</h2></div><StatusPill status={selected.status} /></div>
+          <div className="extension-detail-heading"><div><div className="eyebrow compact">{selected.kind.replace("_", " ")}</div><h2>{selected.display_name}</h2></div><div><StatusPill status={selected.status} /><SignaturePill status={selected.signature_status} /></div></div>
           <p className="extension-description">{selected.description}</p>
-          <div className="extension-detail-meta"><div><span className="extension-meta-label">Extension ID</span><code>{selected.id}</code></div><div><span className="extension-meta-label">Entrypoint</span><code>{selected.entrypoint || "No executable entrypoint"}</code></div></div>
+          <div className="extension-detail-meta"><div><span className="extension-meta-label">Extension ID</span><code>{selected.id}</code></div><div><span className="extension-meta-label">Entrypoint</span><code>{selected.entrypoint || "No executable entrypoint"}</code></div><div><span className="extension-meta-label">Signer identity</span><code>{selected.signer_key_id || "Not verified"}</code></div><div><span className="extension-meta-label">Package digest</span><code>{selected.package_sha256 || "Not verified"}</code></div></div>
           <div className="extension-permissions"><span className="extension-meta-label">Declared permissions</span><div>{selected.permissions.map((permission) => <span className="permission-chip" key={permission}><ShieldCheck size={13} />{permission}</span>)}</div></div>
           {selected.connector_provider && <p className="extension-connector-link"><ShieldCheck size={15} />Built-in adapter for the existing <strong>{selected.connector_provider === "github" ? "GitHub" : "Revit"}</strong> connector. Credentials remain in the local vault.</p>}
           <div className="extension-actions">
             {!selected.installed ? <button type="button" className="extension-primary" onClick={() => void install(selected.id)} disabled={isSaving}><Boxes size={16} />Install disabled</button> : <button type="button" className={`extension-toggle ${selected.enabled ? "enabled" : ""}`} onClick={() => void setEnabled(selected.id, !selected.enabled)} disabled={isSaving}><Power size={16} />{selected.enabled ? "Disable extension" : "Enable extension"}</button>}
-            {selected.kind === "sandboxed_tool" && <button type="button" className="extension-run" onClick={() => void execute(selected.id)} disabled={!selected.enabled || isSaving}><Play size={15} fill="currentColor" />Run in Docker</button>}
+            {selected.kind === "sandboxed_tool" && <button type="button" className="extension-run" onClick={() => void execute(selected.id)} disabled={!selected.enabled || selected.signature_status !== "verified" || isSaving}><Play size={15} fill="currentColor" />Run in Docker</button>}
           </div>
           {!selected.installed && <p className="extension-note"><LockKeyhole size={14} />Installation writes local state only. Enable separately after reviewing this manifest.</p>}
           {selected.installed && !selected.enabled && <p className="extension-note"><LockKeyhole size={14} />Disabled extensions cannot run. Enabling changes local lifecycle state; it does not grant host execution.</p>}

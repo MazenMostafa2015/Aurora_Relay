@@ -218,6 +218,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("react") || id.includes("wouter") || id.includes("zustand")) return "framework";
+          if (id.includes("recharts") || id.includes("chart.js")) return "visualization";
+          if (id.includes("@radix-ui") || id.includes("lucide-react")) return "ui-primitives";
+          return "vendor";
+        },
+      },
+    },
   },
   server: {
     port: 3000,

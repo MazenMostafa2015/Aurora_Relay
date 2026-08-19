@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -145,4 +145,36 @@ def test_health_snapshot_reports_locked_vault_without_secret_material(monkeypatc
     assert snapshot.vault.backend == "windows-credential-vault"
     assert any(alert.id == "credential-vault-locked" for alert in snapshot.alerts)
     assert "AURORA_CONNECTOR_VAULT_KEY" not in payload
+    db.close()
+
+
+def test_health_retention_prunes_only_expired_owner_history() -> None:
+    db = _session()
+    owner = User(username="retention-owner", email="retention-owner@example.test", password_hash="not-a-real-password")
+    other = User(username="retention-other", email="retention-other@example.test", password_hash="not-a-real-password")
+    db.add_all([owner, other])
+    db.commit()
+    db.refresh(owner)
+    db.refresh(other)
+    loop = AgentLoop(user_id=owner.id, name="retention loop", config={})
+    db.add(loop)
+    db.commit()
+    db.refresh(loop)
+    stale = datetime.now(timezone.utc) - timedelta(days=8)
+    db.add_all([
+        AuditLog(user_id=owner.id, event_type="old.owner", created_at=stale),
+        AuditLog(user_id=other.id, event_type="old.other", created_at=stale),
+        AuditLog(user_id=owner.id, event_type="fresh.owner", created_at=datetime.now(timezone.utc)),
+        AgentLoopIteration(loop_id=loop.id, user_id=owner.id, sequence=1, status="completed", dry_run=True, started_at=stale),
+    ])
+    db.commit()
+
+    result = OperationsHealthService(db).update_retention(owner, 7)
+
+    assert result.retention_days == 7
+    assert result.pruned_audit_events == 1
+    assert result.pruned_loop_iterations == 1
+    assert OperationsHealthService(db).retention(owner).retention_days == 7
+    assert db.query(AuditLog).filter(AuditLog.user_id == other.id).count() == 1
+    assert db.query(AuditLog).filter(AuditLog.user_id == owner.id).count() == 1
     db.close()

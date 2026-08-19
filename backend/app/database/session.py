@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..config.settings import settings
@@ -32,3 +32,8 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     from .models import Base
     Base.metadata.create_all(bind=engine)
+    if settings.sqlalchemy_url.startswith("sqlite"):
+        columns = {item["name"] for item in inspect(engine).get_columns("users")}
+        if "health_history_retention_days" not in columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE users ADD COLUMN health_history_retention_days INTEGER NOT NULL DEFAULT 30"))

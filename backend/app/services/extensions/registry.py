@@ -1,51 +1,42 @@
-"""Strict discovery of checked-in local extension manifests and entrypoints."""
+"""Verified local extension package discovery; raw manifests are never executable."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from ...api.models import ExtensionManifest
+from .signing import ExtensionPackageVerifier, PackageVerificationError, VerifiedExtensionPackage
 
 
 class ExtensionRegistryError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, code: str = "registry_invalid") -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class ExtensionRegistry:
-    """Loads only local JSON manifests stored under a controlled directory."""
+    """Loads only locally stored, successfully verified `.aurx` archives."""
 
-    def __init__(self, root: str | Path | None = None) -> None:
+    def __init__(self, root: str | Path | None = None, *, trust_dir: str | Path | None = None) -> None:
         self.root = Path(root).resolve() if root else Path(__file__).resolve().parents[3] / "extensions"
-        self.manifest_dir = self.root / "manifests"
-        self.entrypoint_dir = self.root / "entries"
+        self.package_dir = self.root / "packages"
+        self.trust_dir = Path(trust_dir).resolve() if trust_dir else self.root / "trust"
+        self.verifier = ExtensionPackageVerifier(self.trust_dir)
 
-    def catalog(self) -> dict[str, ExtensionManifest]:
-        if not self.manifest_dir.exists():
+    def catalog(self) -> dict[str, VerifiedExtensionPackage]:
+        if not self.package_dir.exists():
             return {}
-        discovered: dict[str, ExtensionManifest] = {}
-        for manifest_path in sorted(self.manifest_dir.glob("*.json")):
+        discovered: dict[str, VerifiedExtensionPackage] = {}
+        for package_path in sorted(self.package_dir.glob("*.aurx")):
             try:
-                manifest = ExtensionManifest.model_validate(json.loads(manifest_path.read_text(encoding="utf-8")))
-            except Exception as exc:  # validation details are intentionally not rendered to end users
-                raise ExtensionRegistryError(f"Invalid local extension manifest: {manifest_path.name}") from exc
-            if manifest.id in discovered:
-                raise ExtensionRegistryError(f"Duplicate local extension id: {manifest.id}")
-            if manifest.kind.value == "sandboxed_tool" and not manifest.entrypoint:
-                raise ExtensionRegistryError(f"Sandboxed extension {manifest.id} requires an entrypoint")
-            discovered[manifest.id] = manifest
+                verified = self.verifier.verify(package_path)
+            except PackageVerificationError as exc:
+                raise ExtensionRegistryError(str(exc), code=exc.code) from exc
+            if verified.manifest.id in discovered:
+                raise ExtensionRegistryError("Duplicate verified extension id", code="duplicate_extension")
+            discovered[verified.manifest.id] = verified
         return discovered
 
-    def manifest(self, extension_id: str) -> ExtensionManifest:
-        manifest = self.catalog().get(extension_id)
-        if manifest is None:
-            raise ExtensionRegistryError("Extension is not available in the local registry")
-        return manifest
-
-    def entrypoint_path(self, manifest: ExtensionManifest) -> Path:
-        if not manifest.entrypoint:
-            raise ExtensionRegistryError("This extension does not declare an executable entrypoint")
-        root = self.entrypoint_dir.resolve()
-        entrypoint = (root / manifest.entrypoint).resolve()
-        if root not in entrypoint.parents or not entrypoint.is_file():
-            raise ExtensionRegistryError("Extension entrypoint is not available in the local registry")
-        return entrypoint
+    def package(self, extension_id: str) -> VerifiedExtensionPackage:
+        package = self.catalog().get(extension_id)
+        if package is None:
+            raise ExtensionRegistryError("Extension is not available in the verified local registry", code="package_unavailable")
+        return package

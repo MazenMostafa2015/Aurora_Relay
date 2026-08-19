@@ -313,6 +313,7 @@ export interface HealthState {
 
 export type ExtensionPermission = "sandbox.execute" | "connector.read" | "agent.read";
 export type ExtensionStatus = "not_installed" | "installed" | "disabled" | "ready" | "blocked" | "failed";
+export type ExtensionSignatureStatus = "verified" | "unsigned" | "tampered" | "untrusted" | "revoked" | "invalid" | "trust_unavailable";
 
 export interface ExtensionManifestRecord {
   id: string;
@@ -328,6 +329,10 @@ export interface ExtensionManifestRecord {
   enabled: boolean;
   configuration: Record<string, unknown>;
   last_error: string | null;
+  signature_status: ExtensionSignatureStatus;
+  signer_key_id: string | null;
+  package_sha256: string | null;
+  verified_at: string | null;
 }
 
 export interface ExtensionExecutionResult {

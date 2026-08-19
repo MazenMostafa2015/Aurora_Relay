@@ -19,3 +19,4 @@ aiosqlite>=0.20
 psycopg[binary]>=3.2
 redis>=5.0
 cryptography>=42.0
+rfc8785>=0.1.4

@@ -26,6 +26,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    health_history_retention_days: Mapped[int] = mapped_column(Integer, default=30)
     tasks: Mapped[list["Task"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     connectors: Mapped[list["Connector"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -159,11 +160,11 @@ class ConnectorOperation(Base):
 
 
 class ExtensionInstallation(Base):
-    """A user-scoped activation record for a reviewed, local extension manifest.
+    """A user-scoped activation record for a locally verified signed package.
 
-    Extension source is never copied into the database and no remote package URL is
-    stored.  The installed record only references a manifest that the local
-    registry can still validate on every lifecycle transition.
+    Source bytes are never copied into the database. The persisted immutable
+    package identity is compared with a fresh verification result at every
+    security-sensitive lifecycle transition.
     """
 
     __tablename__ = "extension_installations"
@@ -176,6 +177,12 @@ class ExtensionInstallation(Base):
     version: Mapped[str] = mapped_column(String(32))
     kind: Mapped[str] = mapped_column(String(32))
     manifest: Mapped[dict] = mapped_column(JSON, default=dict)
+    signature_status: Mapped[str] = mapped_column(String(32), default="unsigned", index=True)
+    signer_key_id: Mapped[str | None] = mapped_column(String(128))
+    package_sha256: Mapped[str | None] = mapped_column(String(64))
+    manifest_sha256: Mapped[str | None] = mapped_column(String(64))
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    verification_error_code: Mapped[str | None] = mapped_column(String(64))
     configuration: Mapped[dict] = mapped_column(JSON, default=dict)
     enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     status: Mapped[str] = mapped_column(String(32), default="installed", index=True)

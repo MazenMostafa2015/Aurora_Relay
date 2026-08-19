@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 class UserRegister(BaseModel):
@@ -234,10 +234,36 @@ class ExtensionPermission(str, Enum):
     AGENT_READ = "agent.read"
 
 
+class ExtensionSignatureStatus(str, Enum):
+    VERIFIED = "verified"
+    UNSIGNED = "unsigned"
+    TAMPERED = "tampered"
+    UNTRUSTED = "untrusted"
+    REVOKED = "revoked"
+    INVALID = "invalid"
+    TRUST_UNAVAILABLE = "trust_unavailable"
+
+
+class ExtensionPayloadFile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = Field(min_length=1, max_length=240)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    size: int = Field(ge=0, le=10_485_760)
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        if value.startswith(("/", "\\")) or "\\" in value or ".." in value or "\x00" in value:
+            raise ValueError("Extension package paths must be normalized relative paths")
+        return value
+
+
 class ExtensionManifest(BaseModel):
     """Validated local extension metadata; unrecognized fields are rejected."""
 
     model_config = ConfigDict(extra="forbid")
+    package_format: Literal["aurora-extension/v1"]
     id: str = Field(min_length=3, max_length=120, pattern=r"^[a-z0-9][a-z0-9._-]*$")
     display_name: str = Field(min_length=2, max_length=120)
     version: str = Field(min_length=3, max_length=32, pattern=r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$")
@@ -246,15 +272,16 @@ class ExtensionManifest(BaseModel):
     permissions: list[ExtensionPermission] = Field(default_factory=list, max_length=8)
     entrypoint: str | None = Field(default=None, max_length=160)
     connector_provider: Literal["github", "revit"] | None = None
+    files: list[ExtensionPayloadFile] = Field(default_factory=list, max_length=32)
 
     @field_validator("entrypoint")
     @classmethod
     def validate_entrypoint(cls, value: str | None) -> str | None:
         if value is None:
             return value
-        if value.startswith(("/", "\\")) or ".." in value or ":" in value:
+        if value.startswith(("/", "\\")) or ".." in value or ":" in value or "\\" in value:
             raise ValueError("Extension entrypoint must be a relative local filename")
-        if not value.endswith((".js", ".py")):
+        if not value.startswith("payload/") or not value.endswith((".js", ".py")):
             raise ValueError("Extension entrypoint must be a JavaScript or Python file")
         return value
 
@@ -264,6 +291,18 @@ class ExtensionManifest(BaseModel):
         if len(value) != len(set(value)):
             raise ValueError("Extension permissions must be unique")
         return value
+
+    @model_validator(mode="after")
+    def validate_payload_contract(self) -> "ExtensionManifest":
+        paths = [item.path for item in self.files]
+        if len(paths) != len(set(paths)):
+            raise ValueError("Extension package file paths must be unique")
+        if self.kind is ExtensionKind.SANDBOXED_TOOL:
+            if not self.entrypoint or self.entrypoint not in paths:
+                raise ValueError("Sandboxed extensions require an indexed payload entrypoint")
+        elif self.files:
+            raise ValueError("Only sandboxed extensions may include executable payload files")
+        return self
 
 
 class ExtensionInstallRequest(BaseModel):
@@ -295,6 +334,10 @@ class ExtensionResponse(BaseModel):
     permissions: list[ExtensionPermission] = Field(default_factory=list)
     enabled: bool
     status: str
+    signature_status: ExtensionSignatureStatus
+    signer_key_id: str | None = None
+    package_sha256: str | None = None
+    verified_at: datetime | None = None
     configuration: dict[str, Any] = Field(default_factory=dict)
     last_error: str | None = None
     last_run_at: datetime | None = None
@@ -308,6 +351,10 @@ class ExtensionCatalogItem(ExtensionManifest):
     status: str | None = None
     configuration: dict[str, Any] = Field(default_factory=dict)
     last_error: str | None = None
+    signature_status: ExtensionSignatureStatus = ExtensionSignatureStatus.VERIFIED
+    signer_key_id: str | None = None
+    package_sha256: str | None = None
+    verified_at: datetime | None = None
 
 
 class ExtensionCatalogResponse(BaseModel):
@@ -585,3 +632,13 @@ class AgentLoopIterationResponse(BaseModel):
 class AgentLoopIterationListResponse(BaseModel):
     iterations: list[AgentLoopIterationResponse]
     count: int
+
+
+class HealthRetentionUpdateRequest(BaseModel):
+    retention_days: Literal[7, 30, 90]
+
+
+class HealthRetentionResponse(BaseModel):
+    retention_days: Literal[7, 30, 90]
+    pruned_audit_events: int = 0
+    pruned_loop_iterations: int = 0

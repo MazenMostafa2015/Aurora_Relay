@@ -1,0 +1,19 @@
+{
+  "generation": 1,
+  "keys": [
+    {
+      "key_id": "ed25519:sha256:zVLi2cPI2a7Lqh4TT3O8XB_n4PYy10MUnws93BBZ7m8",
+      "public_key": "10K08MRogE58gDCV2L7f5poLvwe0lu5jO2ZkvE8UWA4",
+      "state": "active",
+      "usages": [
+        "package"
+      ]
+    }
+  ],
+  "schema": "aurora-keyring/v1",
+  "signature": {
+    "format": "aurora-ed25519/v1",
+    "key_id": "ed25519:sha256:6dYdU7uixDr9S1JEGj4GfQZou0Kms4nOxOrmre8TnhU",
+    "signature": "hLA6109O_GOVX--40WvN5TIFdJQhYZO_CUMemi09GHuLXpEEwOJF7mVVmLmmmAHV-zlKhXcWBbCWu-NXbvNNDA"
+  }
+}

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from time import monotonic
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..api.models import (
@@ -18,9 +18,10 @@ from ..api.models import (
     OperationalSystemHealth,
     OperationalVaultHealth,
     OperationsHealthResponse,
+    HealthRetentionResponse,
 )
 from ..config.settings import settings
-from ..database.models import AgentLoop, AgentLoopIteration, AuditLog, Connector
+from ..database.models import AgentLoop, AgentLoopIteration, AuditLog, Connector, User
 from .connectors.vault import CredentialVault
 
 
@@ -45,6 +46,28 @@ class OperationsHealthService:
 
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _retention_days(value: int) -> int:
+        if value not in {7, 30, 90}:
+            return 30
+        return value
+
+    def retention(self, user: User) -> HealthRetentionResponse:
+        return HealthRetentionResponse(retention_days=self._retention_days(user.health_history_retention_days))
+
+    def update_retention(self, user: User, retention_days: int) -> HealthRetentionResponse:
+        retention_days = self._retention_days(retention_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        user.health_history_retention_days = retention_days
+        pruned_audits = self.db.execute(delete(AuditLog).where(AuditLog.user_id == user.id, AuditLog.created_at < cutoff)).rowcount or 0
+        pruned_iterations = self.db.execute(delete(AgentLoopIteration).where(AgentLoopIteration.user_id == user.id, AgentLoopIteration.started_at < cutoff)).rowcount or 0
+        self.db.commit()
+        return HealthRetentionResponse(
+            retention_days=retention_days,
+            pruned_audit_events=pruned_audits,
+            pruned_loop_iterations=pruned_iterations,
+        )
 
     @staticmethod
     def _connector_status(status: str) -> str:
@@ -98,8 +121,10 @@ class OperationsHealthService:
                 .order_by(AgentLoopIteration.sequence.desc())
                 .limit(5)
             ))
+        retention_days = self._retention_days(getattr(self.db.get(User, user_id), "health_history_retention_days", 30))
+        cutoff = now - timedelta(days=retention_days)
         audits = list(self.db.scalars(
-            select(AuditLog).where(AuditLog.user_id == user_id).order_by(AuditLog.created_at.desc()).limit(20)
+            select(AuditLog).where(AuditLog.user_id == user_id, AuditLog.created_at >= cutoff).order_by(AuditLog.created_at.desc()).limit(20)
         ))
 
         connector_health = [
