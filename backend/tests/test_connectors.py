@@ -83,6 +83,26 @@ def test_github_issue_action_uses_scoped_connector_and_never_echoes_token(db: Se
     assert "ghp_local_test_token" not in str(result)
 
 
+def test_github_transient_failure_retries_before_returning_success(db: Session) -> None:
+    account = user(db)
+    calls = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            return httpx.Response(503, json={"message": "temporary upstream failure"})
+        return httpx.Response(200, json={"login": "aurora"})
+
+    service = ConnectorService(db, vault=vault(), github=GitHubAdapter(transport=httpx.MockTransport(handler)))
+    connector = service.create_connector(account, provider="github", display_name="GitHub", configuration={"base_url": "https://example.test"}, credential="ghp_local_test_token")
+
+    result = asyncio.run(service.test_connector(account, connector["id"]))
+
+    assert result["ok"] is True
+    assert calls == 3
+
+
 def test_revit_change_is_planned_before_it_can_be_applied_and_is_owner_scoped(db: Session) -> None:
     account = user(db)
     other = user(db, "other-operator")

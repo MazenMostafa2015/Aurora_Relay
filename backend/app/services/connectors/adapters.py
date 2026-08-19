@@ -6,6 +6,7 @@ injected by ``ConnectorService`` only for the duration of a request.
 from __future__ import annotations
 
 import base64
+import asyncio
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
@@ -57,11 +58,25 @@ class GitHubAdapter:
         }
 
     async def _request(self, method: str, path: str, credential: str, configuration: dict[str, Any], *, payload: dict[str, Any] | None = None, params: dict[str, Any] | None = None) -> Any:
-        async with httpx.AsyncClient(base_url=self._base_url(configuration), headers=self._headers(credential), timeout=15, transport=self.transport) as client:
-            try:
-                response = await client.request(method, path, json=payload, params=params)
-            except httpx.HTTPError as exc:
-                raise ConnectorAdapterError("GitHub could not be reached from this installation") from exc
+        response: httpx.Response | None = None
+        async with httpx.AsyncClient(base_url=self._base_url(configuration), headers=self._headers(credential), timeout=httpx.Timeout(12.0, connect=5.0), transport=self.transport) as client:
+            for attempt in range(3):
+                try:
+                    response = await client.request(method, path, json=payload, params=params)
+                except httpx.TimeoutException as exc:
+                    if attempt == 2:
+                        raise ConnectorAdapterError("GitHub did not respond in time. Check connectivity and retry the operation.") from exc
+                except httpx.HTTPError as exc:
+                    if attempt == 2:
+                        raise ConnectorAdapterError("GitHub could not be reached from this installation. Check connectivity and retry.") from exc
+                else:
+                    if response.status_code not in {429, 502, 503, 504} or attempt == 2:
+                        break
+                await asyncio.sleep(0.25 * (2 ** attempt))
+        if response is None:
+            raise ConnectorAdapterError("GitHub request could not be completed. Retry the operation.")
+        if response.status_code == 429:
+            raise ConnectorAdapterError("GitHub is rate limiting this connector. Wait briefly, then retry.")
         if response.status_code in {401, 403, 404}:
             raise ConnectorAdapterError("GitHub rejected this request; verify the token permissions and repository access")
         if response.status_code >= 400:
