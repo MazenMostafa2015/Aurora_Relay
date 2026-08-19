@@ -4,6 +4,7 @@ import { Activity, AlertTriangle, BadgeCheck, CheckCircle2, CirclePause, CircleS
 import { toast } from "sonner";
 import { useHealthCommands, useNavigationCommands, useAuthCommands } from "@/lib/commands";
 import { useHealthStore } from "@/store/healthStore";
+import { AsyncStateNotice } from "@/components/AsyncStateNotice";
 
 function stamp(value: string | null) {
   if (!value) return "No recorded time";
@@ -55,7 +56,7 @@ export function HealthDashboardView({ header }: { header: React.ReactNode }) {
       </div>
     </section>
 
-    {error && <div className="health-inline-error" role="status"><AlertTriangle size={16} /><span>Live status could not be refreshed: {error}. Packaged release evidence remains available.</span></div>}
+    <AsyncStateNotice error={error} loading={isLoading && !lastUpdated} subject="operational health" onRetry={() => void requestRefresh()} />
 
     <section className="health-summary-grid" aria-label="System status summary">
       <article><span className="health-summary-icon"><Gauge size={17} /></span><div><span>System</span><strong>{statusLabel[snapshot.system.status]}</strong><small>{snapshot.system.version} · {uptime(snapshot.system.uptime_seconds)} uptime</small></div></article>

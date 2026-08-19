@@ -26,7 +26,16 @@ function CopyValue({ value, label }: { value: string; label: string }) {
       await navigator.clipboard.writeText(value);
       toast.success(`${label} copied`);
     } catch {
-      toast.error(`Could not copy ${label.toLowerCase()}`);
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      textarea.remove();
+      copied ? toast.success(`${label} copied`) : toast.error(`Could not copy ${label.toLowerCase()}. Select the value and copy it manually.`);
     }
   };
   return <button type="button" className="evidence-copy" onClick={() => void copy()} aria-label={`Copy ${label}`}><Copy size={13} /></button>;
