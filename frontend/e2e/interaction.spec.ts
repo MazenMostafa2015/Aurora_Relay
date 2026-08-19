@@ -240,6 +240,29 @@ test("navigation, task submission, attachment selection, and feedback controls a
   await expect(page.getByText("Model selection is managed by the local Ollama runtime.")).toBeVisible();
 });
 
+test("every workspace navigation button activates its intended current-source view", async ({ page }) => {
+  await mockLocalApi(page);
+  await page.goto("/");
+  await signIn(page);
+
+  const views = [
+    ["Overview", "Welcome back, test.operator."],
+    ["Task desk", "Task desk"],
+    ["Tool explorer", "Tool explorer"],
+    ["Connectors", "Connectors"],
+    ["Operations", "Operations"],
+    ["Extensions", /Extensions stay contained/],
+    ["Agent loop", "Repository improvement loop"],
+    ["Release evidence", "Release evidence"],
+    ["Settings", "Settings"],
+  ] as const;
+
+  for (const [control, heading] of views) {
+    await page.getByRole("button", { name: new RegExp(`^${control}`) }).click();
+    await expect(page.getByRole("heading", { name: heading, exact: typeof heading === "string" })).toBeVisible();
+  }
+});
+
 test("release evidence exposes the signed installer and locally inspectable verification ledger", async ({ page }) => {
   await page.context().grantPermissions(["clipboard-write"]);
   await mockLocalApi(page);

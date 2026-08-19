@@ -1,7 +1,7 @@
 # Aurora Relay Interactive-Control Audit
 
 **Scope:** frontend renderer, typed command layer, authenticated API paths, local fallback behavior, and Electron boundary compatibility.  
-**Audit status:** repaired and validated.  
+**Audit status:** repaired and validated; follow-up regression review completed on 2026-08-19.
 **Author:** Manus AI
 
 ## Executive Summary
@@ -50,3 +50,25 @@ The production build retains the pre-existing main-renderer chunk-size advisory.
 ## Recommended Follow-through
 
 Future control additions should follow the current command-layer pattern: every action returns a typed result, has an explicit pending/disabled state, and renders a visible success, failure, or authentication outcome. The expanded interaction tests should remain a required CI gate, especially for destructive or externally visible actions such as connector removal, Revit apply, agent-loop hard stop, and extension execution.
+
+## Follow-up: Workspace Navigation Regression Review
+
+The reported non-responsive-button concern was reproduced against the current source tree, rather than the stale managed-template renderer that had previously occupied the audit port. The current Aurora Relay renderer responded to every workspace navigation control. No new event-handler, Zustand store wiring, import/prop passing, overlay, pointer-event, z-index, or browser-console regression was found in this source review.
+
+The only failing item was the **test assertion itself**. The regression test expected an Extensions heading named `Reviewed extensions`, but the authenticated `ExtensionsView` actually renders the hero heading `Extensions stay contained.` The test now verifies the real rendered heading, so it detects a failed navigation transition without asserting content the application does not claim to render.
+
+| Workspace control | Verified destination signal |
+|---|---|
+| Overview | `Welcome back, test.operator.` |
+| Task desk | `Task desk` |
+| Tool explorer | `Tool explorer` |
+| Connectors | `Connectors` |
+| Operations | `Operations` |
+| Extensions | `Extensions stay contained.` |
+| Agent loop | `Repository improvement loop` |
+| Release evidence | `Release evidence` |
+| Settings | `Settings` |
+
+The dedicated all-workspace navigation check passes, and the complete interaction suite passes with **16 tests**. The backend suite passes with **55 tests**. Type checking and the production build also pass. The build continues to emit the known non-blocking `503.92 kB` framework-chunk advisory; this button-control audit does not alter the planned chunk-reduction work.
+
+> The regression safeguard tests the current Aurora Relay source. Operators should ensure that their local dev server or desktop package is launched from the Aurora Relay repository/build, not from an unrelated managed-template preview, before treating a visible runtime as authoritative.
