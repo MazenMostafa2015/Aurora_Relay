@@ -72,3 +72,16 @@ The only failing item was the **test assertion itself**. The regression test exp
 The dedicated all-workspace navigation check passes, and the complete interaction suite passes with **16 tests**. The backend suite passes with **55 tests**. Type checking and the production build also pass. The build continues to emit the known non-blocking `503.92 kB` framework-chunk advisory; this button-control audit does not alter the planned chunk-reduction work.
 
 > The regression safeguard tests the current Aurora Relay source. Operators should ensure that their local dev server or desktop package is launched from the Aurora Relay repository/build, not from an unrelated managed-template preview, before treating a visible runtime as authoritative.
+
+## Follow-up: Local Backend Runtime Verification
+
+The local runtime was checked after the navigation safeguard had been integrated on `main`. The active renderer was configured with `VITE_API_BASE_URL=http://127.0.0.1:8019`; the FastAPI service was listening on that loopback origin and returned `200 OK` from `/health`. A CORS preflight from `http://127.0.0.1:5179` was accepted, while an unauthenticated request to `/api/v1/auth/me` correctly returned `401 Unauthorized`. The renderer loaded the sign-in flow without a browser-console application error.
+
+| Concern | Verified behavior | Operator guidance |
+|---|---|---|
+| Assumed port `5000` | Not used by the observed Aurora Relay development runtime. | Do not hard-code port `5000`. Configure the renderer for the active local API origin. |
+| Desktop backend port | Electron allocates a free loopback port and waits for `/health` before loading the renderer. | Launch the desktop application through Electron so the backend lifecycle and selected port remain aligned. |
+| Development backend port | The renderer may use an explicit `VITE_API_BASE_URL`, such as the verified loopback origin on port `8019`. | Start FastAPI with matching loopback, CORS, per-install-secret, and database configuration. |
+| Manual backend startup | An inherited MySQL database URL without its driver prevents startup before the socket bind. | For an isolated local development session, use the supported SQLite configuration or install and configure the intended database driver separately; do not weaken JWT or host-validation requirements. |
+
+The resulting red backend-unavailable condition was not reproducible against the active local renderer. The non-blocking framework-chunk advisory remains intentionally unchanged and is unrelated to the control and connectivity verification.
